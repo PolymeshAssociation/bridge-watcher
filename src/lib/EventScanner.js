@@ -1,7 +1,6 @@
 const Web3 = require("web3"),
   BN = Web3.utils.BN;
 
-const logger = require("./logger");
 const PolyLocker = require("../contracts/PolyLocker");
 const DB = require("./DB");
 
@@ -11,7 +10,7 @@ const DB = require("./DB");
 class EventScanner {
   constructor() {
     this.db = new DB();
-    this.web3 = new Web3(process.env.WEB3_URL || "ws://localhost:8545", {
+    this.web3 = new Web3(process.env.WEB3_URL, {
       clientConfig: {
         keepalive: true,
         keepaliveInterval: 60000,
@@ -31,13 +30,17 @@ class EventScanner {
     this.startBlock = new BN(process.env.START_BLOCK).toNumber();
   }
 
+  async getTx(txHash) {
+    return this.web3.eth.getTransaction(txHash);
+  }
+
   /**
    * Start with last successful state and construct the next block window to scan.
    * @returns {Promise<void>}
    */
   async scan() {
     let startingBlock = this.startBlock;
-
+    console.log(`Scanning from: ${startingBlock}`);
     try {
       let confirmations = process.env.CONFIRMATIONS;
       let latestBlock = await this.getCurrentBlock();
@@ -47,11 +50,11 @@ class EventScanner {
         confirmations,
         latestBlock
       );
-      logger.debug(window, "Scanning");
+      console.log(window, "Scanning");
       await this.scanBetween(window.from, window.to);
       this.startBlock = latestBlock;
     } catch (err) {
-      logger.error(err, "Scanning failure");
+      console.error(err, "Scanning failure");
       throw err;
     }
   }
@@ -68,7 +71,7 @@ class EventScanner {
         toBlock: toBlock,
       });
     } catch (err) {
-      logger.fatal(err, "Unable to query events");
+      console.error(err, "Unable to query events");
       throw err;
     }
     return await Promise.all(

@@ -42,44 +42,79 @@ const main = async () => {
       const { event } = record;
       switch (event.section) {
         case "bridge":
-          handleBridgeTx(event);
+          handleBridgeTx(event, scanner);
           break;
         case "multisig":
-          handleMultsigTx(event);
+          handleMultsigTx(event, scanner);
           break;
       }
     });
   });
 };
 
-function handleBridgeTx(event) {
-  console.log("processing bridge event");
-  const [submitter, bridgeTx, blockNumber] = event.data;
-  const txHash = "0x" + Buffer.from(bridgeTx["tx_hash"]).toString("hex");
-
-  const lockerTx = scanner.db.getEthTx(txHash);
-  if (!lockerTx) {
-    console.log("locker TXN was not found");
-    return;
-  }
-  validateEvent(bridgeTx, lockerTx);
+function isMintingTx(bridgeTx) {
+  return (
+    bridgeTx["nonce"] &&
+    bridgeTx["recipient"] &&
+    bridgeTx["value"] &&
+    bridgeTx["tx_hash"]
+  );
 }
 
-function handleMultsigTx(event) {
-  console.log("[TODO] handling multisig event");
-  // TODO
-  // perform proposal look up to make bridgeTx object
-  // fetch lockerTx
-  // validate
+async function handleBridgeTx(event, scanner) {
+  console.log("processing bridge event", event.toJSON());
+  // need to make sure it BridgeTxScheduled event
+  const [submitter, bridgeTx, blockNumber] = event.data;
+  if (isMintingTx(bridgeTx)) {
+    const txHash = "0x" + Buffer.from(bridgeTx["tx_hash"]).toString("hex");
+
+    const lockerTx = scanner.db.getEthTx(txHash);
+    if (!lockerTx) {
+      console.log("[INVALID] locker TXN was not found");
+      return;
+    }
+    validateEvent(bridgeTx, lockerTx);
+  } else {
+    console.log("ignoring non minting bridge event");
+  }
+}
+
+async function handleMultsigTx(event, scanner) {
+  const [submitter, contractAddr, proposalId] = event.data;
+
+  const proposal = await api.query.multiSig.proposals([
+    contractAddr,
+    proposalId,
+  ]);
+  if (!proposal) {
+    console.error(
+      `proposal at ${contractAddr} ID: ${proposalId} was not found `
+    );
+    return;
+  }
+  console.log("received proposal!");
+  if (proposal["args"]["bridge_tx"]) {
+    const bridgeTx = proposal["args"]["bridge_tx"];
+    const lockerTx = scanner.getEthTx(bridgeTx["tx_hash"]);
+    validateEvent(bridgeTx, lockerTx);
+  } else {
+    console.log(
+      `Received proposal that was not a bridge_tx: ${proposal.toJSON()}`
+    );
+  }
 }
 
 function validateEvent(bridgeTx, lockerTx) {
-  const differentAmount = bridgeTx.amount !== lockerTx.tokens, // check BN or decimal conversion?
+  const differentAmount = bridgeTx.amount !== lockerTx.tokens,
     differentEthAddress = bridgeTx.eth_address !== lockerTx.eth_address,
     differentMeshAddress = bridgeTx.mesh_address !== lockerTx.mesh_address;
 
   if (differentAmount || differentEthAddress || differentMeshAddress) {
-    console.log("INVALID TXN DETECTED!");
+    console.log(
+      `[INVALID] fields did not match Polylocker fields: ${bridgeTx.toJSON()}`
+    ); // TODO add more description about this transaction
+  } else {
+    console.log("Detected valid bridge transaction");
   }
 }
 
