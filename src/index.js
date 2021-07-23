@@ -38,18 +38,37 @@ const main = async () => {
   switch (args[0]) {
     case "watch":
       subscribe(api, scanner);
-      break;
+      return; // dont exit when watching
     case "mesh":
-      validateAllMeshTxs(api, scanner);
+      await validateAllMeshTxs(api, scanner);
       break;
     case "eth":
-      validateAllEthTxs(api, scanner);
+      await validateAllEthTxs(api, scanner);
+      break;
+    case "tx":
+      const txHash = args[1];
+      if (!txHash) {
+        console.log("tx command needs the PolyLocker tx_hash passed");
+      } else {
+        await validateEthTx(api, scanner, txHash);
+      }
       break;
     default:
       console.log("Usage: yarn start [watch|mesh|eth]");
-      process.exit();
   }
+  process.exit();
 };
+
+async function validateEthTx(api, scanner, txHash) {
+  const ethTx = await scanner.getTx(txHash);
+  const bridgeTxs = await getBridgeTxs(api);
+  const bridgeTx = bridgeTxs[ethTx.tx_hash];
+  if (!bridgeTx) {
+    console.log("bridgeTx not found");
+  } else {
+    logErrors(validateTx(bridgeTx, ethTx));
+  }
+}
 
 // subscribes to Polymesh events.
 async function subscribe(api, scanner) {
@@ -86,14 +105,7 @@ async function validateAllMeshTxs(api, scanner) {
 
 // Gets all PolyLocker events and attempts to find the corresponding Polymesh events.
 async function validateAllEthTxs(api, scanner) {
-  let meshTxs = {};
-  const txs = await api.query.bridge.bridgeTxDetails.entries();
-  for (const [key, tx] of txs) {
-    const [meshAddress] = key.toHuman();
-    tx["mesh_address"] = meshAddress;
-    tx["tx_hash"] = hexEncode(tx["tx_hash"]);
-    meshTxs[tx["tx_hash"]] = tx;
-  }
+  const meshTxs = await getBridgeTxs(api);
   await scanner.scan();
   for (const ethTx of scanner.listEthTxs()) {
     const meshTx = meshTxs[ethTx["tx_hash"]];
@@ -170,6 +182,18 @@ function isMintingTx(meshTx) {
     meshTx["value"] &&
     meshTx["tx_hash"]
   );
+}
+
+async function getBridgeTxs(api) {
+  let meshTxs = {};
+  const txs = await api.query.bridge.bridgeTxDetails.entries();
+  for (const [key, tx] of txs) {
+    const [meshAddress] = key.toHuman();
+    tx["mesh_address"] = meshAddress;
+    tx["tx_hash"] = hexEncode(tx["tx_hash"]);
+    meshTxs[tx["tx_hash"]] = tx;
+  }
+  return meshTxs;
 }
 
 main().catch((error) => {
