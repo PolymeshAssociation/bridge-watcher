@@ -42,6 +42,10 @@ class EthScanner {
     return this.parseLog(log);
   }
 
+  listEthTxs() {
+    return this.db.listEthTxs();
+  }
+
   /**
    * Start with last successful state and construct the next block window to scan.
    * @returns {Promise<void>}

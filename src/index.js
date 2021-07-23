@@ -41,8 +41,11 @@ const main = async () => {
     case "mesh":
       validateAllMeshTxs(api, scanner);
       break;
+    case "eth":
+      validateAllEthTxs(api, scanner);
+      break;
     default:
-      console.log("Usage: yarn start [watch|mesh]");
+      console.log("Usage: yarn start [watch|mesh|eth]");
       process.exit();
   }
 };
@@ -77,6 +80,27 @@ async function validateAllMeshTxs(api, scanner) {
     } else {
       validateTx(tx, ethTx);
     }
+  }
+}
+
+// Gets all PolyLocker events and attempts to find the corresponding Polymesh events.
+async function validateAllEthTxs(api, scanner) {
+  let meshTxs = {};
+  const txs = await api.query.bridge.bridgeTxDetails.entries();
+  for (const [key, tx] of txs) {
+    const [meshAddress] = key.toHuman();
+    tx["mesh_address"] = meshAddress;
+    tx["tx_hash"] = hexEncode(tx["tx_hash"]);
+    meshTxs[tx["tx_hash"]] = tx;
+  }
+  await scanner.scan();
+  for (const ethTx of scanner.listEthTxs()) {
+    const meshTx = meshTxs[ethTx["tx_hash"]];
+    if (!meshTx) {
+      console.log(`Mesh Tx was not found by tx_hash: ${ethTx["tx_hash"]}`);
+      continue;
+    }
+    validateTx(meshTx, ethTx);
   }
 }
 
@@ -142,10 +166,15 @@ async function handleMultsigTx(event, scanner) {
 function validateTx(meshTx, ethTx) {
   // POLY has 4 more 0s
   let errors = [];
-  const polyAmt = ethTx.tokens.divn(10000);
-  if (!meshTx.amount.eq(polyAmt)) {
+  if (!meshTx.amount.eq(ethTx.tokens)) {
     errors.push(
-      `different amounts. Polymesh amount: ${meshTx.amount.toString()}, PolyLocker amount: ${polyAmt.toString()}`
+      `different amounts. Polymesh amount: ${meshTx.amount.toString()}, PolyLocker amount: ${ethTx.tokens.toString()}`
+    );
+  }
+
+  if (meshTx.tx_hash != ethTx.tx_hash) {
+    errors.push(
+      `differnt tx_hash. Polymesh hash: ${meshTx.tx_hash}, PolyLocker hash: ${ethTx.tx_hash}`
     );
   }
 
