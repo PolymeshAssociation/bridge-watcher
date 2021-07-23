@@ -10,7 +10,7 @@ const DB = require("./DB");
 
 class EthScanner {
   constructor() {
-    this.db = new DB();
+    this.db = new DB(process.env.POLYLOCKER_ADDR);
     this.web3 = new Web3(process.env.WEB3_URL, {
       clientConfig: {
         keepalive: true,
@@ -27,11 +27,17 @@ class EthScanner {
       PolyLocker.abi,
       process.env.POLYLOCKER_ADDR
     );
-    this.windowSize = 99999999; // hack to scan til latest TODO: cleanup
-    this.startBlock = new BN(process.env.START_BLOCK).toNumber();
+    this.windowSize = 5000; // make env? larger window means faster scan, but risks to big response
+    this.startBlock =
+      this.db.store.startingBlock || new BN(process.env.START_BLOCK).toNumber();
   }
 
+  // get single PolyLocker event by transaction hash. Checks if the tx is cached otherwise attempts to fetch it
   async getTx(txHash) {
+    let tx = this.getStoredTx(txHash);
+    if (tx) {
+      return tx;
+    }
     const result = await this.web3.eth.getTransaction(txHash);
 
     const ethEvents = await this.polyLocker.getPastEvents("PolyLocked", {
@@ -39,11 +45,40 @@ class EthScanner {
       toBlock: result.blockNumber,
     });
     const log = ethEvents.find((e) => e.transactionHash === txHash);
-    return this.parseLog(log);
+    const event = this.parseLog(log);
+    if (event) {
+      this.db.insertEthTx(event);
+    }
+    return event;
+  }
+
+  getStoredTx(txHash) {
+    return this.db.store.polylocker[txHash];
   }
 
   listEthTxs() {
     return this.db.listEthTxs();
+  }
+
+  // scans until latest block
+  async scanAll() {
+    let latestBlock = await this.getCurrentBlock();
+    const saveInterval = 25;
+    let i = 0;
+    console.log("scanning all starting this may take a while");
+    while (this.startBlock < latestBlock) {
+      i++;
+      console.log(
+        `Scanning starting at: ${this.startBlock} latest: ${latestBlock}`
+      );
+      await this.scan();
+      if (i % saveInterval === 0) {
+        console.log("saving db");
+        this.db.store.startingBlock = this.startBlock;
+        this.db.save();
+      }
+    }
+    this.db.save();
   }
 
   /**
@@ -52,19 +87,20 @@ class EthScanner {
    */
   async scan() {
     let startingBlock = this.startBlock;
-    console.log(`Scanning from: ${startingBlock}`);
     try {
       let confirmations = process.env.CONFIRMATIONS;
-      let latestBlock = await this.getCurrentBlock();
+      if (!this.latestBlock) {
+        this.latestBlock = await this.getCurrentBlock();
+      }
       let window = EthScanner.nextWindow(
         startingBlock,
         this.windowSize,
         confirmations,
-        latestBlock
+        this.latestBlock
       );
       console.log(window, "Scanning");
       await this.scanBetween(window.from, window.to);
-      this.startBlock = latestBlock;
+      this.startBlock = window.to;
     } catch (err) {
       console.error(err, "Scanning failure");
       throw err;
@@ -86,6 +122,7 @@ class EthScanner {
       console.error(err, "Unable to query events");
       throw err;
     }
+    console.log(`Inserting ${logs.length} events`);
     return await Promise.all(
       logs.map(async (log) => {
         const event = self.parseLog(log);

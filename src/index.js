@@ -89,7 +89,9 @@ async function subscribe(api, scanner) {
 
 // Pulls all bridgeTxDetails and compares it to the corresponding PolyLocker event.
 async function validateAllMeshTxs(api, scanner) {
+  await scanner.scanAll();
   const txs = await api.query.bridge.bridgeTxDetails.entries();
+  console.log(`validating ${txs.length} mesh transactions`);
   for (const [key, tx] of txs) {
     const [meshAddress] = key.toHuman();
     tx["mesh_address"] = meshAddress; // put the recipient address back into the event
@@ -169,7 +171,7 @@ async function handleMultsigTx(event, scanner) {
 
 function logErrors(errors) {
   if (errors.length > 0) {
-    console.log(`[INVALID TXN]. Errors: ${errors}`);
+    console.log(`[INVALID] ${errors}`);
   } else {
     console.log("Valid transaction detected");
   }
