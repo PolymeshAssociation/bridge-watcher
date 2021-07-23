@@ -7,7 +7,8 @@ const DB = require("./DB");
 /**
  * Scans for `PolyLocked` events and writes to database
  */
-class EventScanner {
+
+class EthScanner {
   constructor() {
     this.db = new DB();
     this.web3 = new Web3(process.env.WEB3_URL, {
@@ -31,7 +32,14 @@ class EventScanner {
   }
 
   async getTx(txHash) {
-    return this.web3.eth.getTransaction(txHash);
+    const result = await this.web3.eth.getTransaction(txHash);
+
+    const ethEvents = await this.polyLocker.getPastEvents("PolyLocked", {
+      fromBlock: result.blockNumber,
+      toBlock: result.blockNumber,
+    });
+    const log = ethEvents.find((e) => e.transactionHash === txHash);
+    return this.parseLog(log);
   }
 
   /**
@@ -44,7 +52,7 @@ class EventScanner {
     try {
       let confirmations = process.env.CONFIRMATIONS;
       let latestBlock = await this.getCurrentBlock();
-      let window = EventScanner.nextWindow(
+      let window = EthScanner.nextWindow(
         startingBlock,
         this.windowSize,
         confirmations,
@@ -144,4 +152,4 @@ class EventScanner {
   }
 }
 
-module.exports = EventScanner;
+module.exports = EthScanner;
