@@ -1,11 +1,11 @@
 {
-  "name": "offences-monitor",
+  "name": "bridge-watcher",
   "version": "1.0.0",
-  "description": "Monitors slashable offences registered on a Substrate based chain.",
+  "description": "Verifies POLY to POLYX conversion is happening properly.",
   "main": "index.js",
   "scripts": {
     "start": "node src/index.js",
-    "test": "echo \"No tests, but it still works~\" && exit 0"
+    "test": "jest"
   },
   "keywords": [
     "substrate",
@@ -27,5 +27,8 @@
     "express": "^4.17.1",
     "prom-client": "^11.5.3",
     "web3": "^1.2.6"
+  },
+  "devDependencies": {
+    "jest": "^27.0.6"
   }
 }

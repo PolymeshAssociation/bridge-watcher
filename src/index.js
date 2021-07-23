@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const execFileSync = require("child_process").execFileSync;
 
+const validateTx = require("./lib/validateTx");
 const EthScanner = require("./lib/EthScanner");
 const schemaPath = path.join(__dirname, "data", "polymesh_schema.json");
 require("dotenv").config(); // Load .env file
@@ -78,7 +79,7 @@ async function validateAllMeshTxs(api, scanner) {
     if (!ethTx) {
       console.log("ethTx not found with hash", txHash);
     } else {
-      validateTx(tx, ethTx);
+      logErrors(validateTx(tx, ethTx));
     }
   }
 }
@@ -100,17 +101,8 @@ async function validateAllEthTxs(api, scanner) {
       console.log(`Mesh Tx was not found by tx_hash: ${ethTx["tx_hash"]}`);
       continue;
     }
-    validateTx(meshTx, ethTx);
+    logErrors(validateTx(meshTx, ethTx));
   }
-}
-
-function isMintingTx(meshTx) {
-  return (
-    meshTx["nonce"] &&
-    meshTx["recipient"] &&
-    meshTx["value"] &&
-    meshTx["tx_hash"]
-  );
 }
 
 function hexEncode(hash) {
@@ -128,7 +120,7 @@ async function handleBridgeTx(event, scanner) {
       console.log("[INVALID] locker TXN was not found");
       return;
     }
-    validateTx(bridgeTx, ethTx);
+    logErrors(validateTx(bridgeTx, ethTx));
   } else {
     console.log("ignoring non minting bridge event");
   }
@@ -155,7 +147,7 @@ async function handleMultsigTx(event, scanner) {
       console.log("could not find eth tx by hash: ", bridgeTx["tx_hash"]);
       return;
     }
-    validateTx(bridgeTx, ethTx);
+    logErrors(validateTx(bridgeTx, ethTx));
   } else {
     console.log(
       `Received proposal that was not a bridge_tx: ${proposal.toJSON()}`
@@ -163,38 +155,21 @@ async function handleMultsigTx(event, scanner) {
   }
 }
 
-function validateTx(meshTx, ethTx) {
-  // POLY has 4 more 0s
-  let errors = [];
-  if (!meshTx.amount.eq(ethTx.tokens)) {
-    errors.push(
-      `different amounts. Polymesh amount: ${meshTx.amount.toString()}, PolyLocker amount: ${ethTx.tokens.toString()}`
-    );
-  }
-
-  if (meshTx.tx_hash != ethTx.tx_hash) {
-    errors.push(
-      `differnt tx_hash. Polymesh hash: ${meshTx.tx_hash}, PolyLocker hash: ${ethTx.tx_hash}`
-    );
-  }
-
-  // seems like no eth_address in details when querying historical meshTx events
-  // if (meshTx["eth_address"] != ethTx["eth_address"]) {
-  //   errors.push(
-  //     `different addresses. Polymesh eth_addr: ${meshTx["eth_address"]} PolyLocker addr: ${ethTx["eth_address"]}`
-  //   );
-  // }
-  if (meshTx.mesh_address !== ethTx.mesh_address) {
-    errors.push(
-      `differnt mesh_addresses. Polymesh mesh_address: ${meshTx["mesh_address"]} PolyLocker addr: ${ethTx["mesh_address"]}`
-    );
-  }
-
+function logErrors(errors) {
   if (errors.length > 0) {
-    console.log("[INVALID TXN]. Errors:", errors);
+    console.log(`[INVALID TXN]. Errors: ${errors}`);
   } else {
-    console.log("Valid tx detected.");
+    console.log("Valid transaction detected");
   }
+}
+
+function isMintingTx(meshTx) {
+  return (
+    meshTx["nonce"] &&
+    meshTx["recipient"] &&
+    meshTx["value"] &&
+    meshTx["tx_hash"]
+  );
 }
 
 main().catch((error) => {

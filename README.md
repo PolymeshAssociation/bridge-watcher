@@ -29,3 +29,7 @@ Events from `multisig` still need to be handled
 
 The app should now be ready to be ran with:
 `yarn start`
+
+### TODOs
+- Add support batchBridgeTx
+- Add tests
