@@ -1,10 +1,12 @@
-const { ApiPromise, WsProvider } = require("@polkadot/api");
 const fs = require("fs");
 const path = require("path");
 const execFileSync = require("child_process").execFileSync;
 
+const { ApiPromise, WsProvider } = require("@polkadot/api");
 const validateTx = require("./lib/validateTx");
+const hexEncode = require("./lib/hexEncode");
 const EthScanner = require("./lib/EthScanner");
+const MeshScanner = require("./lib/MeshScanner");
 const schemaPath = path.join(__dirname, "data", "polymesh_schema.json");
 require("dotenv").config(); // Load .env file
 const schemaUrl =
@@ -25,7 +27,9 @@ if (!fs.existsSync(schemaPath)) {
 const main = async () => {
   const args = process.argv.slice(2);
 
-  const scanner = new EthScanner();
+  const web3URL = process.env.WEB3_URL;
+  const contractAddr = process.env.POLYLOCKER_ADDR;
+  const ethScanner = new EthScanner(web3URL, contractAddr);
 
   const { types, rpc } = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
   const provider = new WsProvider(process.env.POLYMESH_URL);
@@ -34,23 +38,24 @@ const main = async () => {
     types,
     rpc,
   });
+  const meshScanner = new MeshScanner(api);
 
   switch (args[0]) {
     case "watch":
-      subscribe(api, scanner);
-      return; // dont exit when watching
+      meshScanner.subscribe(makeMeshHandler(ethScanner));
+      return; // don't fallthorugh to process.exit()
     case "mesh":
-      await validateAllMeshTxs(api, scanner);
+      await validateAllMeshTxs(meshScanner, ethScanner);
       break;
     case "eth":
-      await validateAllEthTxs(api, scanner);
+      await validateAllEthTxs(meshScanner, ethScanner);
       break;
     case "tx":
       const txHash = args[1];
       if (!txHash) {
         console.log("tx command needs the PolyLocker tx_hash passed");
       } else {
-        await validateEthTx(api, scanner, txHash);
+        await validateEthTx(meshScanner, ethScanner, txHash);
       }
       break;
     default:
@@ -59,89 +64,80 @@ const main = async () => {
   process.exit();
 };
 
-async function validateEthTx(api, scanner, txHash) {
-  const ethTx = await scanner.getTx(txHash);
-  const bridgeTxs = await getBridgeTxs(api);
+async function validateEthTx(meshScanner, ethScanner, txHash) {
+  const ethTx = await ethScanner.getTx(txHash);
+  const bridgeTxs = await meshScanner.fetchAllTxs();
   const bridgeTx = bridgeTxs[ethTx.tx_hash];
   if (!bridgeTx) {
     console.log("bridgeTx not found");
   } else {
-    logErrors(validateTx(bridgeTx, ethTx));
+    validate(bridgeTx, ethTx);
   }
 }
 
 // subscribes to Polymesh events.
-async function subscribe(api, scanner) {
-  api.query.system.events(async (events) => {
+function makeMeshHandler(ethScanner) {
+  return async (events) => {
     console.log(`received ${events.length} poly events`);
     for (const { event } of events) {
       switch (event.section) {
         case "bridge":
-          if (event.method == "bridgeTx") handleBridgeTx(event, scanner);
+          if (event.method == "bridgeTx") handleBridgeTx(event, ethScanner);
           break;
         case "multisig":
-          if (event.method == "Proposed") handleMultsigTx(event, scanner);
+          if (event.method == "Proposed") handleMultsigTx(event, ethScanner);
           break;
       }
     }
-  });
+  };
 }
 
 // Pulls all bridgeTxDetails and compares it to the corresponding PolyLocker event.
-async function validateAllMeshTxs(api, scanner) {
-  await scanner.scanAll();
-  const txs = await api.query.bridge.bridgeTxDetails.entries();
+async function validateAllMeshTxs(meshScanner, ethScanner) {
+  await ethScanner.scanAll();
+  const txs = await meshScanner.fetchAllTxs();
   console.log(`validating ${txs.length} mesh transactions`);
-  for (const [key, tx] of txs) {
-    const [meshAddress] = key.toHuman();
-    tx["mesh_address"] = meshAddress; // put the recipient address back into the event
-    const txHash = hexEncode(tx["tx_hash"]);
-    const ethTx = await scanner.getTx(txHash);
+  for (const [txHash, tx] of Object.entries(txs)) {
+    const ethTx = await ethScanner.getTx(txHash);
     if (!ethTx) {
       console.log("ethTx not found with hash", txHash);
     } else {
-      logErrors(validateTx(tx, ethTx));
+      validate(tx, ethTx);
     }
   }
 }
 
 // Gets all PolyLocker events and attempts to find the corresponding Polymesh events.
-async function validateAllEthTxs(api, scanner) {
-  const meshTxs = await getBridgeTxs(api);
-  await scanner.scan();
-  for (const ethTx of scanner.listEthTxs()) {
+async function validateAllEthTxs(meshScanner, ethScanner) {
+  const meshTxs = await meshScanner.fetchAllTxs();
+  await ethScanner.scan();
+  for (const ethTx of ethScanner.listEthTxs()) {
     const meshTx = meshTxs[ethTx["tx_hash"]];
     if (!meshTx) {
       console.log(`Mesh Tx was not found by tx_hash: ${ethTx["tx_hash"]}`);
       continue;
     }
-    logErrors(validateTx(meshTx, ethTx));
+    validate(meshTx, ethTx);
   }
 }
 
-function hexEncode(hash) {
-  return "0x" + Buffer.from(hash).toString("hex");
-}
-
-async function handleBridgeTx(event, scanner) {
+async function handleBridgeTx(event, ethScanner) {
   // TODO: check for array of bridgeTx?
   const [submitter, bridgeTx, blockNumber] = event.data;
   if (isMintingTx(bridgeTx)) {
     const txHash = make(bridgeTx["tx_hash"]);
 
-    const ethTx = await scanner.getTx(txHash);
+    const ethTx = await ethScanner.getTx(txHash);
     if (!ethTx) {
-      console.log("[INVALID] locker TXN was not found");
+      console.log("[INVALID] PolyLocker TXN was not found");
       return;
     }
-    logErrors(validateTx(bridgeTx, ethTx));
-  } else {
-    console.log("ignoring non minting bridge event");
+    validate(bridgeTx, ethTx);
   }
 }
 
 // A multisig proposal event only references the proposal.
-async function handleMultsigTx(event, scanner) {
+async function handleMultsigTx(event, ethScanner) {
   const [submitter, contractAddr, proposalId] = event.data;
 
   const proposal = await api.query.multiSig.proposals([
@@ -156,12 +152,12 @@ async function handleMultsigTx(event, scanner) {
   }
   if (proposal["args"]["bridge_tx"]) {
     const bridgeTx = proposal["args"]["bridge_tx"];
-    const ethTx = await scanner.getTx(bridgeTx["tx_hash"]);
+    const ethTx = await ethScanner.getTx(bridgeTx["tx_hash"]);
     if (!ethTx) {
       console.log("could not find eth tx by hash: ", bridgeTx["tx_hash"]);
       return;
     }
-    logErrors(validateTx(bridgeTx, ethTx));
+    validate(bridgeTx, ethTx);
   } else {
     console.log(
       `Received proposal that was not a bridge_tx: ${proposal.toJSON()}`
@@ -169,7 +165,8 @@ async function handleMultsigTx(event, scanner) {
   }
 }
 
-function logErrors(errors) {
+function validate(bridgeTx, ethTx) {
+  const errors = validateTx(bridgeTx, ethTx);
   if (errors.length > 0) {
     console.log(`[INVALID] ${errors}`);
   } else {
@@ -184,18 +181,6 @@ function isMintingTx(meshTx) {
     meshTx["value"] &&
     meshTx["tx_hash"]
   );
-}
-
-async function getBridgeTxs(api) {
-  let meshTxs = {};
-  const txs = await api.query.bridge.bridgeTxDetails.entries();
-  for (const [key, tx] of txs) {
-    const [meshAddress] = key.toHuman();
-    tx["mesh_address"] = meshAddress;
-    tx["tx_hash"] = hexEncode(tx["tx_hash"]);
-    meshTxs[tx["tx_hash"]] = tx;
-  }
-  return meshTxs;
 }
 
 main().catch((error) => {

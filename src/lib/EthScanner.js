@@ -4,14 +4,10 @@ const Web3 = require("web3"),
 const PolyLocker = require("../contracts/PolyLocker");
 const DB = require("./DB");
 
-/**
- * Scans for `PolyLocked` events and writes to database
- */
-
 class EthScanner {
-  constructor() {
-    this.db = new DB(process.env.POLYLOCKER_ADDR);
-    this.web3 = new Web3(process.env.WEB3_URL, {
+  constructor(web3URL, contractAddr) {
+    this.db = new DB(contractAddr);
+    this.web3 = new Web3(web3URL, {
       clientConfig: {
         keepalive: true,
         keepaliveInterval: 60000,
@@ -62,18 +58,17 @@ class EthScanner {
 
   // scans until latest block
   async scanAll() {
-    let latestBlock = await this.getCurrentBlock();
+    this.latestBlock = await this.getCurrentBlock();
     const saveInterval = 25;
     let i = 0;
     console.log("scanning all starting this may take a while");
-    while (this.startBlock < latestBlock) {
+    while (this.startBlock < this.latestBlock) {
       i++;
       console.log(
-        `Scanning starting at: ${this.startBlock} latest: ${latestBlock}`
+        `Scanning starting at: ${this.startBlock} latest: ${this.latestBlock}`
       );
       await this.scan();
       if (i % saveInterval === 0) {
-        console.log("saving db");
         this.db.store.startingBlock = this.startBlock;
         this.db.save();
       }
@@ -122,7 +117,6 @@ class EthScanner {
       console.error(err, "Unable to query events");
       throw err;
     }
-    console.log(`Inserting ${logs.length} events`);
     return await Promise.all(
       logs.map(async (log) => {
         const event = self.parseLog(log);
