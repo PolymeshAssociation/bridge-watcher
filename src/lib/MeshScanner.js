@@ -7,6 +7,7 @@ class MeshScanner {
 
   async fetchAllTxs() {
     let meshTxs = {};
+    console.log("fetching all bridgeTx details. This might take a while.");
     const txs = await this.api.query.bridge.bridgeTxDetails.entries();
     for (const [key, tx] of txs) {
       const [mesh_address] = key.toHuman();
@@ -18,6 +19,10 @@ class MeshScanner {
       meshTxs[internalTx.tx_hash] = internalTx;
     }
     return meshTxs;
+  }
+
+  async getProposal(multiSigAddr, proposalId) {
+    return await this.api.query.multiSig.proposals([multiSigAddr, proposalId]);
   }
 
   subscribe(callback) {

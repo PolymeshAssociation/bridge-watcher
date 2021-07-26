@@ -14,9 +14,10 @@ function validateTx(meshTx, ethTx) {
     return errors;
   }
 
-  if (meshTx.amount.toString() !== ethTx.tokens.toString()) {
+  const meshAmt = meshTx.value || meshTx.amount;
+  if (meshAmt.toString() !== ethTx.tokens.toString()) {
     errors.push(
-      `wrong amount. Polymesh: ${meshTx.amount.toString()}, PolyLocker: ${ethTx.tokens.toString()}`
+      `wrong amount. Polymesh: ${meshAmt.toString()}, PolyLocker: ${ethTx.tokens.toString()}`
     );
   }
 
@@ -28,7 +29,9 @@ function validateTx(meshTx, ethTx) {
 
   if (meshTx.mesh_address !== ethTx.mesh_address) {
     errors.push(
-      `wrong polymesh address. Polymesh: ${meshTx["mesh_address"]} PolyLocker intended address: ${ethTx["mesh_address"]}`
+      `wrong polymesh address. Polymesh: ${
+        meshTx["mesh_address"] || meshTx["recipient"]
+      } PolyLocker intended address: ${ethTx["mesh_address"]}`
     );
   }
   return errors;

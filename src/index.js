@@ -42,7 +42,7 @@ const main = async () => {
 
   switch (args[0]) {
     case "watch":
-      meshScanner.subscribe(makeMeshHandler(ethScanner));
+      meshScanner.subscribe(makeMeshHandler(meshScanner, ethScanner));
       return; // don't fallthorugh to process.exit()
     case "mesh":
       await validateAllMeshTxs(meshScanner, ethScanner);
@@ -66,6 +66,10 @@ const main = async () => {
 
 async function validateEthTx(meshScanner, ethScanner, txHash) {
   const ethTx = await ethScanner.getTx(txHash);
+  if (!ethTx) {
+    console.log(`PolyLocker tx not found with hash: ${txHash}`);
+    return;
+  }
   const bridgeTxs = await meshScanner.fetchAllTxs();
   const bridgeTx = bridgeTxs[ethTx.tx_hash];
   validate(bridgeTx, ethTx);
@@ -73,7 +77,7 @@ async function validateEthTx(meshScanner, ethScanner, txHash) {
 
 // subscribes to Polymesh events.
 const bridgeMethods = ["bridgTx"];
-function makeMeshHandler(ethScanner) {
+function makeMeshHandler(meshScanner, ethScanner) {
   return async (events) => {
     console.log(`received ${events.length} poly events`);
     for (const { event } of events) {
@@ -81,8 +85,8 @@ function makeMeshHandler(ethScanner) {
         case "bridge":
           handleBridgeTx(event, ethScanner);
           break;
-        case "multisig":
-          if (event.method == "Proposed") handleMultsigTx(event, ethScanner);
+        case "multiSig":
+          handleMultsigTx(event, meshScanner, ethScanner);
           break;
       }
     }
@@ -93,7 +97,7 @@ function makeMeshHandler(ethScanner) {
 async function validateAllMeshTxs(meshScanner, ethScanner) {
   await ethScanner.scanAll();
   const txs = await meshScanner.fetchAllTxs();
-  console.log(`validating ${txs.length} mesh transactions`);
+  console.log(`validating ${Object.keys(txs).length} mesh transactions`);
   for (const [txHash, tx] of Object.entries(txs)) {
     const ethTx = await ethScanner.getTx(txHash);
     validate(tx, ethTx);
@@ -116,50 +120,81 @@ async function validateAllEthTxs(meshScanner, ethScanner) {
 
 async function handleBridgeTx(event, ethScanner) {
   // TODO: check for array of bridgeTx?
-  const [submitter, bridgeTx, blockNumber] = event.data;
-  if (isMintingTx(bridgeTx)) {
+  console.log("event method", event.method);
+  if (event.method === "TxsHandled") {
+    handleTxsHandled(event);
+    return;
+  }
+  const [submitter, bridgeTx] = event.data;
+  console.log(submitter.toHuman());
+  if (Array.isArray(bridgeTx)) {
+    console.log("validating array of bridge txs");
+    for (const tx of bridgeTx) {
+      if (isMintingTx(bridgeTx)) {
+        const txHash = hexEncode(bridgeTx["tx_hash"]);
+        const ethTx = await ethScanner.getTx(txHash);
+        validate(bridgeTx, ethTx);
+      }
+    }
+  } else if (isMintingTx(bridgeTx)) {
     const txHash = hexEncode(bridgeTx["tx_hash"]);
     const ethTx = await ethScanner.getTx(txHash);
     validate(bridgeTx, ethTx);
   }
 }
 
+async function handleTxsHandled(event) {
+  const [txs] = event.data;
+  for (const [nonce, error] of txs) {
+    console.log(`bridge tx handled, nonce: ${nonce.toHuman()}`);
+  }
+}
+
 // A multisig proposal event only references the proposal.
-async function handleMultsigTx(event, ethScanner) {
+async function handleMultsigTx(event, meshScanner, ethScanner) {
+  if (event.method !== "ProposalAdded") return;
   const [submitter, contractAddr, proposalId] = event.data;
 
-  const proposal = await api.query.multiSig.proposals([
-    contractAddr,
-    proposalId,
-  ]);
+  const proposal = await meshScanner.getProposal(
+    contractAddr.toJSON(),
+    proposalId.toJSON()
+  );
   if (!proposal) {
     console.error(
       `proposal at ${contractAddr} ID: ${proposalId} was not found `
     );
     return;
   }
-  // TODO will need to dig into multi signatures / vectors.
-  if (proposal["args"]["bridge_tx"]) {
-    const bridgeTx = proposal["args"]["bridge_tx"];
+  const proposalObj = proposal.toJSON();
+  const args = proposalObj["args"];
+  if (Array.isArray(args["bridge_txs"])) {
+    for (const bridgeTx of args["bridge_txs"]) {
+      if (isMintingTx(bridgeTx)) {
+        const ethTx = await ethScanner.getTx(bridgeTx["tx_hash"]);
+        validate(bridgeTx, ethTx);
+      }
+    }
+  } else if (args["bridge_tx"]) {
+    const bridgeTx = args["bridge_tx"];
     const ethTx = await ethScanner.getTx(bridgeTx["tx_hash"]);
     validate(bridgeTx, ethTx);
   } else {
-    console.log(
-      `Received proposal that was not a bridge_tx: ${proposal.toJSON()}`
-    );
+    console.log(`Received proposal that was not a bridge_tx`);
   }
 }
 
 function validate(bridgeTx, ethTx) {
   const errors = validateTx(bridgeTx, ethTx);
   let meshAddress = bridgeTx
-    ? bridgeTx["recipient"].toJSON() || bridgeTx["mesh_address"]
+    ? bridgeTx["recipient"] || bridgeTx["mesh_address"]
     : "unknown";
-  const bridgeNonce = bridgeTx ? bridgeTx["nonce"] : "unknown";
+  const bridgeNonce = bridgeTx ? bridgeTx["nonce"] : undefined;
   const txHash = ethTx ? ethTx["tx_hash"] : "unknown";
-  const details = `Mesh Address: ${meshAddress} BridgeTx nonce: ${bridgeNonce}, eth tx_hash: ${txHash}`;
+  const details = `Mesh Address: ${meshAddress} ${
+    bridgeNonce ? "BridgeTx nonce: " + bridgeNonce + ", " : ""
+  }eth tx_hash: ${txHash}`;
   if (errors.length > 0) {
-    console.log(`[INVALID] ${details}, ${errors}`);
+    console.log(`[INVALID] ${details}. Problems: ${errors}`);
   } else {
     console.log("Valid transaction detected");
   }
