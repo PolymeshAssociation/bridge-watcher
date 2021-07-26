@@ -2,6 +2,8 @@ const fs = require("fs");
 const path = require("path");
 const execFileSync = require("child_process").execFileSync;
 const winston = require("winston");
+const { Command } = require("commander");
+const program = new Command();
 
 const { ApiPromise, WsProvider } = require("@polkadot/api");
 const validateTx = require("./lib/validateTx");
@@ -34,43 +36,82 @@ if (!fs.existsSync(schemaPath)) {
 }
 
 const main = async () => {
-  const args = process.argv.slice(2);
+  let ethScanner, meshScanner;
+  let setup = async () => {
+    const opts = program.opts();
+    console.log(opts.contract);
+    ethScanner = new EthScanner(opts.ethURL, opts.contract, logger);
 
-  const web3URL = process.env.WEB3_URL;
-  const contractAddr = process.env.POLYLOCKER_ADDR;
-  const ethScanner = new EthScanner(web3URL, contractAddr, logger);
+    const { types, rpc } = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
+    const provider = new WsProvider(opts.polymeshURL);
+    const api = await ApiPromise.create({
+      provider,
+      types,
+      rpc,
+    });
+    meshScanner = new MeshScanner(api, logger);
+  };
+  program.version("0.0.1");
+  program.requiredOption(
+    "-c, --contract <address>",
+    "address of the PolyLocker contract. Overrides the env variable $CONTRACT",
+    process.env.CONTRACT
+  );
+  program.requiredOption(
+    "-p, --polymeshURL <URL>",
+    "Web socket url for a polymesh node. Overrides env variable $POLYMESH_URL",
+    process.env.POLYMESH_URL
+  );
+  program.requiredOption(
+    "-s, --startBlock <number>",
+    "Specifies ethereum block to start scanning from the PolyLocker contract. Overrides env variable $START_BLOCK",
+    process.env.START_BLOCK
+  );
+  program.requiredOption(
+    "-w, --ethURL <URL>",
+    "Specifies url for an Ethereum node. Overrides env var $ETH_URL",
+    process.env.ETH_URL
+  );
 
-  const { types, rpc } = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
-  const provider = new WsProvider(process.env.POLYMESH_URL);
-  const api = await ApiPromise.create({
-    provider,
-    types,
-    rpc,
-  });
-  const meshScanner = new MeshScanner(api, logger);
-
-  switch (args[0]) {
-    case "watch":
+  program
+    .command("watch")
+    .description(
+      "subscribes to polymesh events and checks for bridgeTx and proposals for bridgeTx"
+    )
+    .action(async () => {
+      await setup();
       meshScanner.subscribe(makeMeshHandler(meshScanner, ethScanner));
-      return; // don't fallthorugh to process.exit()
-    case "mesh":
-      await validateAllMeshTxs(meshScanner, ethScanner);
-      break;
-    case "eth":
+    });
+  program
+    .command("eth")
+    .description(
+      "reads all PolyLocker transactions and  verifies there is an existing bridgeTx for each"
+    )
+    .action(async () => {
+      await setup();
       await validateAllEthTxs(meshScanner, ethScanner);
-      break;
-    case "tx":
-      const txHash = args[1];
-      if (!txHash) {
-        logger.info("tx command needs the PolyLocker tx_hash passed");
-      } else {
-        await validateEthTx(meshScanner, ethScanner, txHash);
-      }
-      break;
-    default:
-      logger.info("Usage: yarn start [watch|mesh|eth]");
-  }
-  process.exit();
+      process.exit();
+    });
+  program
+    .command("mesh")
+    .description(
+      "reads all bridgeTx and verifies them against PolyLocker transactions"
+    )
+    .action(async () => {
+      await setup();
+      await validateAllMeshTxs(meshScanner, ethScanner);
+      process.exit();
+    });
+  program
+    .command("tx")
+    .argument("<txHash>", "transaction hash")
+    .action(async (txHash) => {
+      await setup();
+      await validateEthTx(meshScanner, ethScanner, txHash);
+      process.exit();
+    });
+  await program.parseAsync();
+  return;
 };
 
 async function validateEthTx(meshScanner, ethScanner, txHash) {

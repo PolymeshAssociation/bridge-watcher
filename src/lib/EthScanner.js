@@ -20,10 +20,7 @@ class EthScanner {
         onTimeout: false,
       },
     });
-    this.polyLocker = new this.web3.eth.Contract(
-      PolyLocker.abi,
-      process.env.POLYLOCKER_ADDR
-    );
+    this.polyLocker = new this.web3.eth.Contract(PolyLocker.abi, contractAddr);
     this.windowSize = 5000; // make env? larger window means faster scan, but risks to big response
     this.startBlock =
       this.db.store.startingBlock || new BN(process.env.START_BLOCK).toNumber();
