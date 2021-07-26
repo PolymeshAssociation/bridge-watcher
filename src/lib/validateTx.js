@@ -1,20 +1,34 @@
 function validateTx(meshTx, ethTx) {
   let errors = [];
+  // we should have one or the other at least
+  if (!meshTx) {
+    errors.push(
+      `Mesh transaction was not found for PolyLock transaction: ${ethTx.tx_hash}`
+    );
+    return errors;
+  }
+  if (!ethTx) {
+    errors.push(
+      `PolyLocker transaction was not found by tx_hash: ${meshTx.tx_hash}`
+    );
+    return errors;
+  }
+
   if (meshTx.amount.toString() !== ethTx.tokens.toString()) {
     errors.push(
-      `different amounts. Polymesh amount: ${meshTx.amount.toString()}, PolyLocker amount: ${ethTx.tokens.toString()}`
+      `wrong amount. Polymesh: ${meshTx.amount.toString()}, PolyLocker: ${ethTx.tokens.toString()}`
     );
   }
 
   if (meshTx.tx_hash != ethTx.tx_hash) {
     errors.push(
-      `differnt tx_hash. Polymesh hash: ${meshTx.tx_hash}, PolyLocker hash: ${ethTx.tx_hash}`
+      `wrong hash. Polymesh: ${meshTx.tx_hash}, PolyLocker: ${ethTx.tx_hash}`
     );
   }
 
   if (meshTx.mesh_address !== ethTx.mesh_address) {
     errors.push(
-      `differnt mesh_addresses. Polymesh mesh_address: ${meshTx["mesh_address"]} PolyLocker addr: ${ethTx["mesh_address"]}`
+      `wrong polymesh address. Polymesh: ${meshTx["mesh_address"]} PolyLocker intended address: ${ethTx["mesh_address"]}`
     );
   }
   return errors;

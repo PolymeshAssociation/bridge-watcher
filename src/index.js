@@ -68,21 +68,18 @@ async function validateEthTx(meshScanner, ethScanner, txHash) {
   const ethTx = await ethScanner.getTx(txHash);
   const bridgeTxs = await meshScanner.fetchAllTxs();
   const bridgeTx = bridgeTxs[ethTx.tx_hash];
-  if (!bridgeTx) {
-    console.log("bridgeTx not found");
-  } else {
-    validate(bridgeTx, ethTx);
-  }
+  validate(bridgeTx, ethTx);
 }
 
 // subscribes to Polymesh events.
+const bridgeMethods = ["bridgTx"];
 function makeMeshHandler(ethScanner) {
   return async (events) => {
     console.log(`received ${events.length} poly events`);
     for (const { event } of events) {
       switch (event.section) {
         case "bridge":
-          if (event.method == "bridgeTx") handleBridgeTx(event, ethScanner);
+          handleBridgeTx(event, ethScanner);
           break;
         case "multisig":
           if (event.method == "Proposed") handleMultsigTx(event, ethScanner);
@@ -99,11 +96,7 @@ async function validateAllMeshTxs(meshScanner, ethScanner) {
   console.log(`validating ${txs.length} mesh transactions`);
   for (const [txHash, tx] of Object.entries(txs)) {
     const ethTx = await ethScanner.getTx(txHash);
-    if (!ethTx) {
-      console.log("ethTx not found with hash", txHash);
-    } else {
-      validate(tx, ethTx);
-    }
+    validate(tx, ethTx);
   }
 }
 
@@ -125,13 +118,8 @@ async function handleBridgeTx(event, ethScanner) {
   // TODO: check for array of bridgeTx?
   const [submitter, bridgeTx, blockNumber] = event.data;
   if (isMintingTx(bridgeTx)) {
-    const txHash = make(bridgeTx["tx_hash"]);
-
+    const txHash = hexEncode(bridgeTx["tx_hash"]);
     const ethTx = await ethScanner.getTx(txHash);
-    if (!ethTx) {
-      console.log("[INVALID] PolyLocker TXN was not found");
-      return;
-    }
     validate(bridgeTx, ethTx);
   }
 }
@@ -150,13 +138,10 @@ async function handleMultsigTx(event, ethScanner) {
     );
     return;
   }
+  // TODO will need to dig into multi signatures / vectors.
   if (proposal["args"]["bridge_tx"]) {
     const bridgeTx = proposal["args"]["bridge_tx"];
     const ethTx = await ethScanner.getTx(bridgeTx["tx_hash"]);
-    if (!ethTx) {
-      console.log("could not find eth tx by hash: ", bridgeTx["tx_hash"]);
-      return;
-    }
     validate(bridgeTx, ethTx);
   } else {
     console.log(
@@ -167,8 +152,14 @@ async function handleMultsigTx(event, ethScanner) {
 
 function validate(bridgeTx, ethTx) {
   const errors = validateTx(bridgeTx, ethTx);
+  let meshAddress = bridgeTx
+    ? bridgeTx["recipient"].toJSON() || bridgeTx["mesh_address"]
+    : "unknown";
+  const bridgeNonce = bridgeTx ? bridgeTx["nonce"] : "unknown";
+  const txHash = ethTx ? ethTx["tx_hash"] : "unknown";
+  const details = `Mesh Address: ${meshAddress} BridgeTx nonce: ${bridgeNonce}, eth tx_hash: ${txHash}`;
   if (errors.length > 0) {
-    console.log(`[INVALID] ${errors}`);
+    console.log(`[INVALID] ${details}, ${errors}`);
   } else {
     console.log("Valid transaction detected");
   }
