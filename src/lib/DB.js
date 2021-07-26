@@ -3,7 +3,8 @@ const path = require("path");
 const BN = require("bn.js");
 class DB {
   // saves contracts transactions to disk to save scanning time
-  constructor(contractAddr) {
+  constructor(contractAddr, logger) {
+    this.logger = logger;
     const parentDir = path.resolve(__dirname, "..");
     this.path = path.join(parentDir, "data", `${contractAddr}.store.json`);
     this.load();
@@ -34,7 +35,7 @@ class DB {
   save() {
     fs.writeFile(this.path, JSON.stringify(this.store), (err) => {
       if (err) {
-        console.error("could not save db", err);
+        this.logger.error("could not save db", err);
       }
     });
   }
@@ -49,7 +50,7 @@ class DB {
           16
         );
       }
-      console.log(`loaded store from ${this.path}`);
+      this.logger.info(`loaded store from ${this.path}`);
     }
   }
 }

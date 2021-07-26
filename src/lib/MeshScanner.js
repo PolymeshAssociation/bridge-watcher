@@ -1,13 +1,14 @@
 const hexEncode = require("./hexEncode");
 
 class MeshScanner {
-  constructor(api) {
+  constructor(api, logger) {
     this.api = api;
+    this.logger = logger;
   }
 
   async fetchAllTxs() {
     let meshTxs = {};
-    console.log("fetching all bridgeTx details. This might take a while.");
+    this.logger.info("fetching all bridgeTx details. This might take a while.");
     const txs = await this.api.query.bridge.bridgeTxDetails.entries();
     for (const [key, tx] of txs) {
       const [mesh_address] = key.toHuman();

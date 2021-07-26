@@ -5,8 +5,9 @@ const PolyLocker = require("../contracts/PolyLocker");
 const DB = require("./DB");
 
 class EthScanner {
-  constructor(web3URL, contractAddr) {
-    this.db = new DB(contractAddr);
+  constructor(web3URL, contractAddr, logger) {
+    this.logger = logger;
+    this.db = new DB(contractAddr, logger);
     this.web3 = new Web3(web3URL, {
       clientConfig: {
         keepalive: true,
@@ -61,10 +62,10 @@ class EthScanner {
     this.latestBlock = await this.getCurrentBlock();
     const saveInterval = 25;
     let i = 0;
-    console.log("scanning all starting this may take a while");
+    this.logger.info("scanning all starting this may take a while");
     while (this.startBlock < this.latestBlock) {
       i++;
-      console.log(
+      this.logger.info(
         `Scanning starting at: ${this.startBlock} latest: ${this.latestBlock}`
       );
       await this.scan();
@@ -93,11 +94,11 @@ class EthScanner {
         confirmations,
         this.latestBlock
       );
-      console.log(window, "Scanning");
+      this.logger.info(`scanning blocks from: ${window.from} to: ${window.to}`);
       await this.scanBetween(window.from, window.to);
       this.startBlock = window.to;
     } catch (err) {
-      console.error(err, "Scanning failure");
+      this.logger.error(err, "Scanning failure");
       throw err;
     }
   }
@@ -114,7 +115,7 @@ class EthScanner {
         toBlock: toBlock,
       });
     } catch (err) {
-      console.error(err, "Unable to query events");
+      self.logger.error(`Unable to query events, error: ${err}`);
       throw err;
     }
     return await Promise.all(
