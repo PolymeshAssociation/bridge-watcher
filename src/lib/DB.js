@@ -1,9 +1,20 @@
+const fs = require("fs");
+const path = require("path");
+const BN = require("bn.js");
 class DB {
-  constructor() {
-    this.store = {
-      polylocker: {},
-      polymesh: {},
-    };
+  // saves contracts transactions to disk to save scanning time
+  constructor(contractAddr, logger) {
+    this.logger = logger;
+    const parentDir = path.resolve(__dirname, "..");
+    this.path = path.join(parentDir, "data", `${contractAddr}.store.json`);
+    this.load();
+    if (!this.store) {
+      this.store = {
+        polylocker: {},
+        startingBlock: 0,
+      };
+    }
+    this.contractAddr = contractAddr;
   }
 
   insertEthTx(tx) {
@@ -12,11 +23,35 @@ class DB {
   getEthTx(id) {
     return this.store.polylocker[id];
   }
+  listEthTxs() {
+    return Object.values(this.store.polylocker);
+  }
   insertPolyTx(tx) {
     this.store.polymesh[tx.id] = tx;
   }
   getPolyTx(id) {
     return this.store.polymesh[id];
+  }
+  save() {
+    fs.writeFile(this.path, JSON.stringify(this.store), (err) => {
+      if (err) {
+        this.logger.error("could not save db", err);
+      }
+    });
+  }
+  load() {
+    if (fs.existsSync(this.path)) {
+      const data = fs.readFileSync(this.path);
+      if (data.toString() === "") return;
+      this.store = JSON.parse(data);
+      for (let entry in this.store.polylocker) {
+        this.store.polylocker[entry].tokens = new BN(
+          this.store.polylocker[entry].tokens,
+          16
+        );
+      }
+      this.logger.info(`loaded store from ${this.path}`);
+    }
   }
 }
 

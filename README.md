@@ -18,9 +18,9 @@ We may want to change this pattern and use the `tx_hash` to lookup the PolyLocke
 
 You can get a WEB3_URL by creating an account at [Infura](https://infura.io/) and creating a ETH project.
 
-### TODO
+## Logging
 
-Events from `multisig` still need to be handled
+If an invalid transaction is found the log line will beging with `[INVALID]`. This may happen if a Polymesh transaction does not have a corresponding PolyLocker transaction, vice versa, or their paramaters differ. For now extra information is logged to STDOUT, but a `| grep INVALID` will find only the invalid log lines.
 
 ## Getting started
 
@@ -29,3 +29,28 @@ Events from `multisig` still need to be handled
 
 The app should now be ready to be ran with:
 `yarn start`
+
+## Testing variables
+
+There are multiple testing networks and PolyLocker contracts. Here are some testnet / contract pairs.
+
+Kovan -> Alcyone:
+
+```
+POLYMESH_URL=wss://alcyone-rpc.polymesh.live
+CONTRACT=0x636ed3919906F6B1abe54cAEB2497067C4fC9bA7
+START_BLOCK=20331467
+```
+
+Kovan -> PME:
+
+```
+POLYMESH_URL=wss://pme.polymath.network/
+CONTRACT=0x9791be69F613D372E09EbA611d25157A5512c5c8
+START_BLOCK=18830739
+```
+
+### TODOs
+
+- Add support batchBridgeTx
+- Add tests
