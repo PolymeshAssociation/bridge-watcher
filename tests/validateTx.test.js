@@ -1,4 +1,4 @@
-const validateTx = require("../src/lib/validateTx");
+const { validateTx } = require("../src/lib/validateTx");
 const BN = require("bn.js");
 
 describe("validateTx", () => {

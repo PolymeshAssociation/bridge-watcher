@@ -60,11 +60,9 @@ class EthScanner {
     const saveInterval = 25;
     let i = 0;
     this.logger.info("scanning all starting this may take a while");
-    while (this.startBlock < this.latestBlock) {
+    const confirmations = process.env.confirmations;
+    while (this.startBlock + confirmations < this.latestBlock) {
       i++;
-      this.logger.info(
-        `Scanning starting at: ${this.startBlock} latest: ${this.latestBlock}`
-      );
       await this.scan();
       if (i % saveInterval === 0) {
         this.db.store.startingBlock = this.startBlock;

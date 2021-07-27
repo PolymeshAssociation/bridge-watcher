@@ -13,7 +13,6 @@ function validateTx(meshTx, ethTx) {
     );
     return errors;
   }
-
   const meshAmt = meshTx.value || meshTx.amount;
   if (meshAmt.toString() !== ethTx.tokens.toString()) {
     errors.push(
@@ -37,4 +36,26 @@ function validateTx(meshTx, ethTx) {
   return errors;
 }
 
-module.exports = validateTx;
+function validate(bridgeTx, ethTx, logger) {
+  const errors = validateTx(bridgeTx, ethTx);
+  if (errors.length > 0) {
+    const details = formDetails(bridgeTx, ethTx);
+    logger.warn(`[INVALID] ${details}. Problems: ${errors}`);
+  } else {
+    logger.info("Valid transaction detected");
+  }
+}
+
+function formDetails(bridgeTx, ethTx) {
+  const meshAddress = bridgeTx
+    ? bridgeTx["recipient"] || bridgeTx["mesh_address"]
+    : "unknown";
+  const bridgeNonce = bridgeTx ? bridgeTx["nonce"] : undefined;
+  const txHash = ethTx ? ethTx["tx_hash"] : "unknown";
+  return `Mesh Address: ${meshAddress} ${
+    bridgeNonce ? "BridgeTx nonce: " + bridgeNonce + ", " : ""
+  }eth tx_hash: ${txHash}`;
+}
+
+exports.validateTx = validateTx;
+exports.validate = validate;
