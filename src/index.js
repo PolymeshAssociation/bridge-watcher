@@ -14,7 +14,7 @@ const { ApiPromise, WsProvider } = require("@polkadot/api");
 const { validateTx, validate } = require("./lib/validateTx");
 const hexEncode = require("./lib/hexEncode");
 const EthScanner = require("./lib/EthScanner");
-const MeshScanner = require("./lib/MeshScanner");
+const { MeshScanner } = require("./lib/MeshScanner");
 const schemaPath = path.join(__dirname, "data", "polymesh_schema.json");
 require("dotenv").config(); // Load .env file
 const schemaUrl =
@@ -84,7 +84,7 @@ const main = async () => {
     )
     .action(async () => {
       await setup();
-      meshScanner.subscribe(makeMeshHandler(meshScanner, ethScanner));
+      meshScanner.subscribe();
     });
   program
     .command("eth")
@@ -111,100 +111,12 @@ const main = async () => {
     .argument("<txHash>", "transaction hash")
     .action(async (txHash) => {
       await setup();
-      await validateEthTx(meshScanner, ethScanner, logger, txHash);
+      await validateEthTx(meshScanner, ethScanner, txHash, logger);
       process.exit();
     });
   await program.parseAsync();
   return;
 };
-
-// subscribes to Polymesh events.
-const bridgeMethods = ["bridgTx"];
-function makeMeshHandler(meshScanner, ethScanner) {
-  return async (events) => {
-    logger.info(`received ${events.length} poly events`);
-    for (const { event } of events) {
-      switch (event.section) {
-        case "bridge":
-          handleBridgeTx(event, ethScanner);
-          break;
-        case "multiSig":
-          handleMultsigTx(event, meshScanner, ethScanner);
-          break;
-      }
-    }
-  };
-}
-
-async function handleBridgeTx(event, ethScanner) {
-  if (event.method === "TxsHandled") {
-    handleTxsHandled(event);
-    return;
-  }
-  const [submitter, bridgeTx] = event.data;
-  if (Array.isArray(bridgeTx)) {
-    for (const tx of bridgeTx) {
-      if (isMintingTx(bridgeTx)) {
-        const txHash = hexEncode(bridgeTx["tx_hash"]);
-        const ethTx = await ethScanner.getTx(txHash);
-        validate(bridgeTx, ethTx, logger);
-      }
-    }
-  } else if (isMintingTx(bridgeTx)) {
-    const txHash = hexEncode(bridgeTx["tx_hash"]);
-    const ethTx = await ethScanner.getTx(txHash);
-    validate(bridgeTx, ethTx, logger);
-  }
-}
-
-async function handleTxsHandled(event) {
-  const [txs] = event.data;
-  for (const [nonce, error] of txs) {
-    logger.info(`bridge tx handled, nonce: ${nonce.toHuman()}`);
-  }
-}
-
-// A multisig proposal event only references the proposal.
-async function handleMultsigTx(event, meshScanner, ethScanner) {
-  if (event.method !== "ProposalAdded") return;
-  const [submitter, contractAddr, proposalId] = event.data;
-
-  const proposal = await meshScanner.getProposal(
-    contractAddr.toJSON(),
-    proposalId.toJSON()
-  );
-  if (!proposal) {
-    logger.error(
-      `proposal at ${contractAddr} ID: ${proposalId} was not found `
-    );
-    return;
-  }
-  const proposalObj = proposal.toJSON();
-  const args = proposalObj["args"];
-  if (Array.isArray(args["bridge_txs"])) {
-    for (const bridgeTx of args["bridge_txs"]) {
-      if (isMintingTx(bridgeTx)) {
-        const ethTx = await ethScanner.getTx(bridgeTx["tx_hash"]);
-        validate(bridgeTx, ethTx, logger);
-      }
-    }
-  } else if (args["bridge_tx"]) {
-    const bridgeTx = args["bridge_tx"];
-    const ethTx = await ethScanner.getTx(bridgeTx["tx_hash"]);
-    validate(bridgeTx, ethTx, logger);
-  } else {
-    logger.info(`Received proposal that was not a bridge_tx`);
-  }
-}
-
-function isMintingTx(meshTx) {
-  return (
-    meshTx["nonce"] &&
-    meshTx["recipient"] &&
-    meshTx["value"] &&
-    meshTx["tx_hash"]
-  );
-}
 
 main().catch((error) => {
   logger.error(`exiting ${error}`);

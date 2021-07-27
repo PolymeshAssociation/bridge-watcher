@@ -26,11 +26,10 @@ function validateTx(meshTx, ethTx) {
     );
   }
 
-  if (meshTx.mesh_address !== ethTx.mesh_address) {
+  const meshAddress = meshTx["mesh_address"] || meshTx["recipient"];
+  if (meshAddress !== ethTx.mesh_address) {
     errors.push(
-      `wrong polymesh address: Polymesh: ${
-        meshTx["mesh_address"] || meshTx["recipient"]
-      } PolyLocker intended address: ${ethTx["mesh_address"]}`
+      `wrong polymesh address: Polymesh: ${meshAddress} PolyLocker intended address: ${ethTx["mesh_address"]}`
     );
   }
   return errors;
