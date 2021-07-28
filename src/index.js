@@ -84,7 +84,7 @@ const main = async () => {
     )
     .action(async () => {
       await setup();
-      meshScanner.subscribe();
+      meshScanner.subscribe(ethScanner);
     });
   program
     .command("eth")
@@ -111,7 +111,7 @@ const main = async () => {
     .argument("<txHash>", "transaction hash")
     .action(async (txHash) => {
       await setup();
-      await validateEthTx(meshScanner, ethScanner, txHash, logger);
+      await validateEthTx(meshScanner, ethScanner, logger, txHash);
       process.exit();
     });
   await program.parseAsync();

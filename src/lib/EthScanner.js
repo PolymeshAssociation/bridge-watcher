@@ -33,6 +33,10 @@ class EthScanner {
       return tx;
     }
     const result = await this.web3.eth.getTransaction(txHash);
+    if (!result) {
+      this.logger.error("result was not found by txHash: ", txHash);
+      return null;
+    }
 
     const ethEvents = await this.polyLocker.getPastEvents("PolyLocked", {
       fromBlock: result.blockNumber,

@@ -27,9 +27,9 @@ class MeshScanner {
     return await this.api.query.multiSig.proposals([multiSigAddr, proposalId]);
   }
 
-  subscribe() {
+  subscribe(ethScanner) {
     this.api.query.system.events(
-      makeMeshHandler(this.meshScanner, this.ethScanner, this.logger)
+      makeMeshHandler(this, ethScanner, this.logger)
     );
   }
 }
