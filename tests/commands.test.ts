@@ -1,15 +1,15 @@
-const {
-  ethScanner,
+import {
   meshScanner,
+  ethScanner,
   logger,
   expectedValidMsg,
   expectedErrorMsg,
-} = require("./helpers");
-const {
+} from "./helpers";
+import {
   validateAllMeshTxs,
   validateEthTx,
   validateAllEthTxs,
-} = require("../src/lib/commands");
+} from "../src/lib/commands";
 
 describe("bridge watcher commands", () => {
   afterEach(() => jest.clearAllMocks());
@@ -29,10 +29,12 @@ describe("bridge watcher commands", () => {
   test("tx with good transaction", async () => {
     await validateEthTx(meshScanner, ethScanner, logger, "0x01");
     expect(logger.info).toHaveBeenCalledWith(expectedValidMsg);
+    expect(logger.warn).not.toHaveBeenCalled();
   });
 
   test("tx with bad transaction", async () => {
     await validateEthTx(meshScanner, ethScanner, logger, "0xff");
+    expect(logger.info).not.toHaveBeenCalled();
     expect(logger.warn).toHaveBeenCalledWith(expectedErrorMsg);
   });
 });

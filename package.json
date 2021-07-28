@@ -4,8 +4,10 @@
   "description": "Verifies POLY to POLYX conversion is happening properly.",
   "main": "index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "test": "jest"
+    "start": "yarn run dev",
+    "test": "jest",
+    "build": "tsc",
+    "dev": "tsc && node ./built/src/index.js"
   },
   "keywords": [
     "substrate",
@@ -26,6 +28,12 @@
     "winston": "^3.3.3"
   },
   "devDependencies": {
-    "jest": "^27.0.6"
+    "@types/jest": "^26.0.24",
+    "jest": "^27.0.6",
+    "ts-jest": "^27.0.4",
+    "ts-node": "^10.1.0",
+    "ts-node-dev": "^1.1.8",
+    "types-bn": "^0.0.1",
+    "typescript": "^4.3.5"
   }
 }

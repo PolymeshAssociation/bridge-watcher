@@ -1,48 +1,47 @@
 const {
-  meshTx,
-  badMeshTx,
+  rawMeshTx,
+  rawBadMeshTx,
+  meshScanner,
   ethScanner,
   expectedValidMsg,
   expectedErrorMsg,
   logger,
 } = require("./helpers");
-const { makeMeshHandler } = require("../src/lib/MeshScanner");
+import { makeMeshHandler } from "../src/lib/MeshScanner";
 
 class MockCodec {
-  constructor(value) {
-    this.value = value;
-  }
+  constructor(private value: Object) {}
   toJSON() {
     return this.value;
   }
 }
 
-const meshScanner = {
-  getProposal: jest.fn().mockImplementation((contractId, proposalId) => {
+meshScanner.getProposal = jest
+  .fn()
+  .mockImplementation((contractId, proposalId) => {
     if (proposalId === "23") {
       return new MockCodec({
         args: {
-          bridge_tx: { ...meshTx },
+          bridge_tx: { ...rawMeshTx },
         },
       });
     } else if (proposalId === "24") {
       return new MockCodec({
         args: {
-          bridge_txs: [meshTx, badMeshTx],
+          bridge_txs: [rawMeshTx, rawBadMeshTx],
         },
       });
     }
-  }),
-};
+  });
 
 const validEvent = {
   section: "bridge",
-  data: ["0x6000", meshTx],
+  data: ["0x6000", rawMeshTx],
 };
 
 const invalidEvent = {
   section: "bridge",
-  data: ["0x6000", badMeshTx],
+  data: ["0x6000", rawBadMeshTx],
 };
 
 const handler = makeMeshHandler(meshScanner, ethScanner, logger);
@@ -68,7 +67,7 @@ describe("handleEvent", () => {
         event: {
           section: "bridge",
           method: "batchProposeBridgeTx",
-          data: ["0x6000", [meshTx, badMeshTx]],
+          data: ["0x6000", [rawMeshTx, rawBadMeshTx]],
         },
       },
     ]);

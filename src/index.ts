@@ -1,27 +1,25 @@
-const fs = require("fs");
-const path = require("path");
+import fs from "fs";
+import path from "path";
 const execFileSync = require("child_process").execFileSync;
-const winston = require("winston");
-const { Command } = require("commander");
+import winston from "winston";
+import { Command } from "commander";
 const program = new Command();
 
-const {
+import {
   validateAllMeshTxs,
   validateAllEthTxs,
   validateEthTx,
-} = require("./lib/commands");
-const { ApiPromise, WsProvider } = require("@polkadot/api");
-const { validateTx, validate } = require("./lib/validateTx");
-const hexEncode = require("./lib/hexEncode");
-const EthScanner = require("./lib/EthScanner");
-const { MeshScanner } = require("./lib/MeshScanner");
+} from "./lib/commands";
+import { ApiPromise, WsProvider } from "@polkadot/api";
+import { EthScanner } from "./lib/EthScanner";
+import { MeshScanner } from "./lib/MeshScanner";
 const schemaPath = path.join(__dirname, "data", "polymesh_schema.json");
 require("dotenv").config(); // Load .env file
 const schemaUrl =
   "https://raw.githubusercontent.com/PolymathNetwork/Polymesh/alcyone/polymesh_schema.json";
 
 const logger = winston.createLogger({
-  level: "info",
+  level: "debug",
   format: winston.format.json(),
   transports: [
     new winston.transports.Console({ format: winston.format.simple() }),
@@ -41,7 +39,7 @@ if (!fs.existsSync(schemaPath)) {
 }
 
 const main = async () => {
-  let ethScanner, meshScanner;
+  let ethScanner: EthScanner, meshScanner: MeshScanner;
   let setup = async () => {
     const opts = program.opts();
     ethScanner = new EthScanner(opts.ethURL, opts.contract, logger);
@@ -118,7 +116,4 @@ const main = async () => {
   return;
 };
 
-main().catch((error) => {
-  logger.error(`exiting ${error}`);
-  process.exit(-1);
-});
+main();

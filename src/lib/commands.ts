@@ -1,7 +1,14 @@
-const { validate } = require("./validateTx");
+import { Logger } from "winston";
+import { IEthScanner } from "./EthScanner";
+import { IMeshScanner } from "./MeshScanner";
+import { validate } from "./validateTx";
 
 // Pulls all bridgeTxDetails and compares it to the corresponding PolyLocker event.
-async function validateAllMeshTxs(meshScanner, ethScanner, logger) {
+export async function validateAllMeshTxs(
+  meshScanner: IMeshScanner,
+  ethScanner: IEthScanner,
+  logger: Logger
+) {
   await ethScanner.scanAll();
   const txs = await meshScanner.fetchAllTxs();
   for (const [txHash, tx] of Object.entries(txs)) {
@@ -9,34 +16,38 @@ async function validateAllMeshTxs(meshScanner, ethScanner, logger) {
     validate(tx, ethTx, logger);
   }
 }
-exports.validateAllMeshTxs = validateAllMeshTxs;
 
 // Validates a single PolyLocker transaction. This fetches all mesh transactions so can be somewhat slow.
-async function validateEthTx(meshScanner, ethScanner, logger, txHash) {
+export async function validateEthTx(
+  meshScanner: IMeshScanner,
+  ethScanner: IEthScanner,
+  logger: Logger,
+  txHash: string
+) {
   const ethTx = await ethScanner.getTx(txHash);
   if (!ethTx) {
     logger.warn(`PolyLocker tx not found with hash: ${txHash}`);
     return;
   }
   const bridgeTxs = await meshScanner.fetchAllTxs();
-  const bridgeTx = bridgeTxs[ethTx.tx_hash];
+  const bridgeTx = bridgeTxs[ethTx.txHash];
   validate(bridgeTx, ethTx, logger);
 }
-exports.validateEthTx = validateEthTx;
 
 // Gets all PolyLocker events and attempts to find the corresponding Polymesh events.
-async function validateAllEthTxs(meshScanner, ethScanner, logger) {
-  const [meshTxs] = await Promise.all([
-    await meshScanner.fetchAllTxs(),
-    await ethScanner.scan(),
-  ]);
+export async function validateAllEthTxs(
+  meshScanner: IMeshScanner,
+  ethScanner: IEthScanner,
+  logger: Logger
+) {
+  const meshTxs = await meshScanner.fetchAllTxs();
+  await ethScanner.scanAll();
   for (const ethTx of ethScanner.listEthTxs()) {
-    const meshTx = meshTxs[ethTx["tx_hash"]];
+    const meshTx = meshTxs[ethTx.txHash];
     if (!meshTx) {
-      logger.warn(`Mesh Tx was not found by tx_hash: ${ethTx["tx_hash"]}`);
+      logger.warn(`Mesh Tx was not found by tx_hash: ${ethTx.txHash}`);
       continue;
     }
     validate(meshTx, ethTx, logger);
   }
 }
-exports.validateAllEthTxs = validateAllEthTxs;
