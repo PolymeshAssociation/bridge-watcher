@@ -2,7 +2,7 @@ import { Logger } from "winston";
 
 import Web3 from "web3";
 
-const PolyLocker = require("../contracts/PolyLocker");
+const PolyLocker = require("../../../contracts/PolyLocker");
 import DB from "./DB";
 import { EthTx } from "./models/EthTx";
 import BN from "bn.js";
