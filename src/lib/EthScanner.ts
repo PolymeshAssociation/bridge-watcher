@@ -1,38 +1,44 @@
-const Web3 = require("web3"),
-  BN = Web3.utils.BN;
+import { Logger } from "winston";
 
-const PolyLocker = require("../contracts/PolyLocker");
-const DB = require("./DB");
+import Web3 from "web3";
 
-class EthScanner {
-  constructor(web3URL, contractAddr, logger) {
-    this.logger = logger;
+const PolyLocker = require("../../../contracts/PolyLocker");
+import DB from "./DB";
+import { EthTx } from "./models/EthTx";
+import BN from "bn.js";
+
+export interface IEthScanner {
+  getTx: (txHash: string) => Promise<EthTx>;
+  listEthTxs: () => EthTx[];
+  scanAll: () => Promise<void>;
+}
+
+export class EthScanner implements IEthScanner {
+  private polyLocker;
+  private windowSize: number;
+  private db: DB;
+  private web3: Web3;
+  private startBlock: number;
+  private latestBlock: number;
+  constructor(web3URL: string, contractAddr: string, private logger: Logger) {
     this.db = new DB(contractAddr, logger);
-    this.web3 = new Web3(web3URL, {
-      clientConfig: {
-        keepalive: true,
-        keepaliveInterval: 60000,
-      },
-      reconnect: {
-        auto: true,
-        delay: 3000, // ms
-        maxAttempts: 10,
-        onTimeout: false,
-      },
-    });
+    this.web3 = new Web3(web3URL);
     this.polyLocker = new this.web3.eth.Contract(PolyLocker.abi, contractAddr);
     this.windowSize = 5000; // make env? larger window means faster scan, but risks to big response
-    this.startBlock =
-      this.db.store.startingBlock || new BN(process.env.START_BLOCK).toNumber();
+    this.startBlock = this.db.startBlock || parseInt(process.env.START_BLOCK);
   }
 
   // get single PolyLocker event by transaction hash. Checks if the tx is cached otherwise attempts to fetch it
-  async getTx(txHash) {
+  async getTx(txHash: string): Promise<EthTx> {
     let tx = this.getStoredTx(txHash);
     if (tx) {
       return tx;
     }
     const result = await this.web3.eth.getTransaction(txHash);
+    if (!result) {
+      this.logger.error("result was not found by txHash: ", txHash);
+      return null;
+    }
 
     const ethEvents = await this.polyLocker.getPastEvents("PolyLocked", {
       fromBlock: result.blockNumber,
@@ -46,11 +52,11 @@ class EthScanner {
     return event;
   }
 
-  getStoredTx(txHash) {
-    return this.db.store.polylocker[txHash];
+  private getStoredTx(txHash: string): EthTx {
+    return this.db.getEthTx(txHash);
   }
 
-  listEthTxs() {
+  listEthTxs(): EthTx[] {
     return this.db.listEthTxs();
   }
 
@@ -60,14 +66,12 @@ class EthScanner {
     const saveInterval = 25;
     let i = 0;
     this.logger.info("scanning all starting this may take a while");
-    while (this.startBlock < this.latestBlock) {
+    const confirmations = parseInt(process.env.CONFIRMATIONS) || 3;
+    while (this.startBlock + confirmations < this.latestBlock) {
       i++;
-      this.logger.info(
-        `Scanning starting at: ${this.startBlock} latest: ${this.latestBlock}`
-      );
       await this.scan();
+      this.db.startBlock = this.startBlock;
       if (i % saveInterval === 0) {
-        this.db.store.startingBlock = this.startBlock;
         this.db.save();
       }
     }
@@ -78,10 +82,10 @@ class EthScanner {
    * Start with last successful state and construct the next block window to scan.
    * @returns {Promise<void>}
    */
-  async scan() {
+  async scan(): Promise<void> {
     let startingBlock = this.startBlock;
     try {
-      let confirmations = process.env.CONFIRMATIONS;
+      let confirmations = parseInt(process.env.CONFIRMATIONS);
       if (!this.latestBlock) {
         this.latestBlock = await this.getCurrentBlock();
       }
@@ -103,7 +107,7 @@ class EthScanner {
   /**
    * Watch for events between `fromBlock` and `toBlock`
    */
-  async scanBetween(fromBlock, toBlock) {
+  private async scanBetween(fromBlock: number, toBlock: number) {
     let self = this;
     let logs;
     try {
@@ -128,30 +132,28 @@ class EthScanner {
    * Parses a log object into PolyLocked event.
    * @param log
    */
-  parseLog(log) {
+  private parseLog(log: any): EthTx {
     if (!log || !log.returnValues || log.returnValues.length === 0) {
       return null;
     }
 
     let rt = log.returnValues;
-    let event = {
-      event_id: rt._id,
-      eth_address: rt._holder,
-      mesh_address: rt._meshAddress,
-      tokens: new BN(rt._polymeshBalance),
-      tx_hash: log.transactionHash,
-      block_hash: log.blockHash,
-      block_number: log.blockNumber,
-    };
-
-    return event;
+    return new EthTx(
+      rt._id,
+      rt._holder,
+      rt._meshAddress,
+      new BN(rt._polymeshBalance),
+      log.transactionHash,
+      log.blockHash,
+      log.blockNumber
+    );
   }
 
   /**
    * Get latest block number
-   * @returns {Promise<void>}
+   * @returns {Promise<number>}
    */
-  async getCurrentBlock() {
+  private async getCurrentBlock(): Promise<number> {
     return await this.web3.eth.getBlockNumber();
   }
 
@@ -167,7 +169,12 @@ class EthScanner {
    *      +-------------------+----------------------v-------------+
    *      +    window size    +                                    +
    */
-  static nextWindow(fromBlock, windowSize, confirmations, latestBlock) {
+  private static nextWindow(
+    fromBlock: number,
+    windowSize: number,
+    confirmations: number,
+    latestBlock: number
+  ) {
     let toBlock = fromBlock + windowSize - 1;
 
     if (toBlock > latestBlock - confirmations) {
@@ -184,5 +191,3 @@ class EthScanner {
     };
   }
 }
-
-module.exports = EthScanner;

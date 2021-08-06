@@ -30,6 +30,13 @@ If an invalid transaction is found the log line will beging with `[INVALID]`. Th
 The app should now be ready to be ran with:
 `yarn start`
 
+Which will print a help menu. There are four commands that can be invoked like
+
+- `yarn start watch` subscribed to Polymesh events and will verify them against the PolyLocker contract
+- `yarn start eth` Will scan all PolyLocker transactions and attempt to find the corresponding Bridge event
+- `yarn start mesh` Will scan all BridgeTx and attempt to find a matching PolyLocker transactions.
+- `yarn start tx <hash>` Attempts to find the PolyLocker transaction and verify it against BridgeTx.
+
 ## Testing variables
 
 There are multiple testing networks and PolyLocker contracts. Here are some testnet / contract pairs.
