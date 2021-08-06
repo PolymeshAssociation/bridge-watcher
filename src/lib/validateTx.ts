@@ -1,6 +1,7 @@
 import { Logger } from "winston";
 import { EthTx } from "./models/EthTx";
 import { MeshTx } from "./models/MeshTx";
+import { Slack } from "./Slack";
 
 export function validateTx(meshTx: MeshTx, ethTx: EthTx) {
   let errors = [];
@@ -39,11 +40,19 @@ export function validateTx(meshTx: MeshTx, ethTx: EthTx) {
   return errors;
 }
 
-export function validate(bridgeTx: MeshTx, ethTx: EthTx, logger: Logger) {
+export function validate(
+  bridgeTx: MeshTx,
+  ethTx: EthTx,
+  logger: Logger,
+  slack: Slack = null // optional so we dont post to slack for non subscriber commands
+) {
   const errors = validateTx(bridgeTx, ethTx);
   if (errors.length > 0) {
     const details = formDetails(bridgeTx, ethTx);
     logger.warn(`[INVALID] ${details}. Problems: ${errors}`);
+    if (slack) {
+      slack.post("Invalid bridgeTx detected\n" + details);
+    }
   } else {
     logger.info("Valid transaction detected");
   }

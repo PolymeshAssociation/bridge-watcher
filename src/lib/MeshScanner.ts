@@ -5,6 +5,7 @@ import { IEthScanner } from "./EthScanner";
 import { ApiPromise } from "@polkadot/api";
 import { MeshTx } from "./models/MeshTx";
 import BN from "bn.js";
+import { Slack } from "./Slack";
 
 export interface IMeshScanner {
   fetchAllTxs: () => Promise<{ [key: string]: MeshTx }>;
@@ -13,7 +14,11 @@ export interface IMeshScanner {
 }
 
 export class MeshScanner implements IMeshScanner {
-  constructor(private api: ApiPromise, private logger: Logger) {}
+  constructor(
+    private api: ApiPromise,
+    private logger: Logger,
+    private slack: Slack
+  ) {}
 
   async fetchAllTxs(): Promise<{ [key: string]: MeshTx }> {
     let meshTxs: { [key: string]: MeshTx } = {};
@@ -43,7 +48,7 @@ export class MeshScanner implements IMeshScanner {
 
   subscribe(ethScanner: IEthScanner) {
     this.api.query.system.events(
-      makeMeshHandler(this, ethScanner, this.logger)
+      makeMeshHandler(this, ethScanner, this.logger, this.slack)
     );
   }
 }
@@ -52,17 +57,18 @@ export class MeshScanner implements IMeshScanner {
 export function makeMeshHandler(
   meshScanner: IMeshScanner,
   ethScanner: IEthScanner,
-  logger: Logger
+  logger: Logger,
+  slack: Slack
 ) {
   return async (events: [any]) => {
     logger.debug(`received ${events.length} poly events`);
     for (const { event } of events) {
       switch (event.section) {
         case "bridge":
-          await handleBridgeTx(event, ethScanner, logger);
+          await handleBridgeTx(event, ethScanner, logger, slack);
           break;
         case "multiSig":
-          await handleMultsigTx(event, meshScanner, ethScanner, logger);
+          await handleMultsigTx(event, meshScanner, ethScanner, logger, slack);
           break;
       }
     }
@@ -72,7 +78,8 @@ export function makeMeshHandler(
 async function handleBridgeTx(
   event: any,
   ethScanner: IEthScanner,
-  logger: Logger
+  logger: Logger,
+  slack: Slack
 ) {
   if (event.method === "TxsHandled") {
     handleTxsHandled(event, logger);
@@ -84,14 +91,14 @@ async function handleBridgeTx(
       const tx = makeBridgeTx(d);
       if (tx) {
         const ethTx = await ethScanner.getTx(tx.txHash);
-        validate(tx, ethTx, logger);
+        validate(tx, ethTx, logger, slack);
       }
     }
   } else {
     const tx = makeBridgeTx(data);
     if (tx) {
       const ethTx = await ethScanner.getTx(tx.txHash);
-      validate(tx, ethTx, logger);
+      validate(tx, ethTx, logger, slack);
     }
   }
 }
@@ -108,7 +115,8 @@ async function handleMultsigTx(
   event: any,
   meshScanner: IMeshScanner,
   ethScanner: IEthScanner,
-  logger: Logger
+  logger: Logger,
+  slack: Slack
 ) {
   if (event.method !== "ProposalAdded") return;
   const [submitter, contractAddr, proposalId] = event.data;
@@ -130,14 +138,14 @@ async function handleMultsigTx(
       const tx = makeBridgeTx(data);
       if (tx) {
         const ethTx = await ethScanner.getTx(tx.txHash);
-        validate(tx, ethTx, logger);
+        validate(tx, ethTx, logger, slack);
       }
     }
   } else if (args["bridge_tx"]) {
     const tx = makeBridgeTx(args["bridge_tx"]);
     if (tx) {
       const ethTx = await ethScanner.getTx(tx.txHash);
-      validate(tx, ethTx, logger);
+      validate(tx, ethTx, logger, slack);
     }
   } else {
     logger.info(`Received proposal that was not a bridge_tx`);

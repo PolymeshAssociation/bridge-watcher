@@ -47,18 +47,22 @@ export const meshMap = {
   "0xff": badMeshTx,
 };
 
-export const ethScanner = {
+export const ethScannerMock = {
   getTx: jest.fn().mockImplementation((txHash) => ethMap[txHash]),
   scanAll: jest.fn(),
   scan: jest.fn(),
   listEthTxs: jest.fn().mockReturnValue([ethTx, badEthTx]),
 };
 
-export const meshScanner = {
+export const meshScannerMock = {
   fetchAllTxs: jest.fn().mockReturnValue(meshMap),
   subscribe: jest.fn(),
   getProposal: jest.fn(),
   logger: jest.fn(),
+};
+
+export const slackMock = {
+  post: jest.fn(),
 };
 
 const winstonMock = {

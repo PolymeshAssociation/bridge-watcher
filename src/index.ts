@@ -13,6 +13,7 @@ import {
 import { ApiPromise, WsProvider } from "@polkadot/api";
 import { EthScanner } from "./lib/EthScanner";
 import { MeshScanner } from "./lib/MeshScanner";
+import { Slack } from "./lib/Slack";
 const schemaPath = path.join(__dirname, "data", "polymesh_schema.json");
 require("dotenv").config(); // Load .env file
 const schemaUrl =
@@ -43,7 +44,7 @@ const main = async () => {
   let setup = async () => {
     const opts = program.opts();
     ethScanner = new EthScanner(opts.ethURL, opts.contract, logger);
-
+    const slack = new Slack(opts.slackHook, logger);
     const { types, rpc } = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
     const provider = new WsProvider(opts.polymeshURL);
     const api = await ApiPromise.create({
@@ -51,7 +52,7 @@ const main = async () => {
       types,
       rpc,
     });
-    meshScanner = new MeshScanner(api, logger);
+    meshScanner = new MeshScanner(api, logger, slack);
   };
   program.version("0.0.1");
   program.requiredOption(
@@ -73,6 +74,11 @@ const main = async () => {
     "-w, --ethURL <URL>",
     "Specifies url for an Ethereum node. Overrides env var $ETH_URL",
     process.env.ETH_URL
+  );
+  program.requiredOption(
+    "-h --slackHook <URL>",
+    "Slack webhook to post alerts to. Overrides env variable $SLACK_HOOK",
+    process.env.SLACK_HOOK
   );
 
   program
