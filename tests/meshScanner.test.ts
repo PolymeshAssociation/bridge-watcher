@@ -1,5 +1,4 @@
 import { Subscriber } from "../src/lib/Subscriber";
-import { Slack } from "../src/lib/Slack";
 import { slackMock } from "./helpers";
 import { Validator } from "../src/lib/Validator";
 
@@ -47,7 +46,7 @@ const invalidEvent = {
   data: ["0x6000", rawBadMeshTx],
 };
 
-const validator = new Validator(logger, slackMock);
+const validator = new Validator(logger, slackMock, meshScannerMock, true);
 
 const subscriber = new Subscriber(
   meshScannerMock,
@@ -67,12 +66,14 @@ describe("handleEvent", () => {
       expect(logger.warn).not.toHaveBeenCalled();
       expect(logger.info).toHaveBeenCalledWith(expectedValidMsg);
       expect(slackMock.post).not.toHaveBeenCalled();
+      expect(meshScannerMock.freeze).not.toHaveBeenCalled();
     });
     test("with invalid event", async () => {
       await handler([{ event: invalidEvent }]);
       expect(logger.warn).toHaveBeenCalledWith(expectedErrorMsg);
       expect(logger.info).not.toHaveBeenCalled();
       expect(slackMock.post).toHaveBeenCalled();
+      expect(meshScannerMock.freeze).toHaveBeenCalled();
     });
   });
 

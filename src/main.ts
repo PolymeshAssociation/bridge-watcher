@@ -19,7 +19,7 @@ import { Subscriber } from "./lib/Subscriber";
 const schemaPath = path.join(__dirname, "data", "polymesh_schema.json");
 require("dotenv").config(); // Load .env file
 const schemaUrl =
-  "https://raw.githubusercontent.com/PolymathNetwork/Polymesh/alcyone/polymesh_schema.json";
+  "https://raw.githubusercontent.com/PolymathNetwork/Polymesh/tooling_v3.2.0/polymesh_schema.json";
 
 const logger = winston.createLogger({
   level: "debug",
@@ -50,8 +50,7 @@ const main = async () => {
     const opts = program.opts();
     ethScanner = new EthScanner(opts.ethURL, opts.contract, logger);
     const slack = new Slack(opts.slackHook, logger);
-    const disableSlack = program.args[0] !== "watch";
-    validator = new Validator(logger, slack, disableSlack);
+    const watcherMode = program.args[0] === "watch";
     const { types, rpc } = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
     const provider = new WsProvider(opts.polymeshURL);
     const api = await ApiPromise.create({
@@ -59,7 +58,8 @@ const main = async () => {
       types,
       rpc,
     });
-    meshScanner = new MeshScanner(api, logger);
+    meshScanner = new MeshScanner(api, logger, opts.mnemonic);
+    validator = new Validator(logger, slack, meshScanner, watcherMode);
     subscriber = new Subscriber(meshScanner, ethScanner, validator, logger);
   };
   program.version("0.0.1");
@@ -87,6 +87,11 @@ const main = async () => {
     "-h --slackHook <URL>",
     "Slack webhook to post alerts to. Overrides env variable $SLACK_HOOK",
     process.env.SLACK_HOOK
+  );
+  program.requiredOption(
+    "-m --mnemonic <string>",
+    "Mnemonic for the bridge freezer admin account. Overrides env variable $MNEMONIC",
+    process.env.MNEMONIC
   );
 
   program

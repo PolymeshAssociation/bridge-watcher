@@ -13,7 +13,7 @@ import {
 } from "../src/lib/commands";
 import { Validator } from "../src/lib/Validator";
 
-const validator = new Validator(logger, slackMock);
+const validator = new Validator(logger, slackMock, meshScannerMock);
 describe("bridge watcher commands", () => {
   afterEach(() => jest.clearAllMocks());
 
