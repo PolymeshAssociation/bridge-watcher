@@ -7,7 +7,7 @@
     "start": "yarn run dev",
     "test": "jest",
     "build": "tsc",
-    "dev": "tsc && node ./built/src/index.js"
+    "dev": "tsc && node ./dist/src/main.js"
   },
   "keywords": [
     "substrate",
@@ -20,6 +20,7 @@
   "license": "AGPL-3.0",
   "dependencies": {
     "@polkadot/api": "^1.32.1",
+    "axios": "^0.21.1",
     "bs58": "^4.0.1",
     "commander": "^8.0.0",
     "dotenv": "^10.0.0",

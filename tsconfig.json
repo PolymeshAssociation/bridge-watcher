@@ -13,7 +13,7 @@
       "*": ["node_modules/*", "src/types/*"]
     },
     "typeRoots": ["node_modules/@types", "src/types"],
-    "outDir": "./built"
+    "outDir": "./dist"
   },
   "include": ["./src/**/*", "jest.config.js"],
   "exclude": ["node_modules"]
