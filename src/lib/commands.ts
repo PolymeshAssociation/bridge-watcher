@@ -1,19 +1,19 @@
 import { Logger } from "winston";
 import { IEthScanner } from "./EthScanner";
 import { IMeshScanner } from "./MeshScanner";
-import { validate } from "./validateTx";
+import { Validator } from "./Validator";
 
 // Pulls all bridgeTxDetails and compares it to the corresponding PolyLocker event.
 export async function validateAllMeshTxs(
   meshScanner: IMeshScanner,
   ethScanner: IEthScanner,
-  logger: Logger
+  validator: Validator
 ) {
   await ethScanner.scanAll();
   const txs = await meshScanner.fetchAllTxs();
   for (const [txHash, tx] of Object.entries(txs)) {
     const ethTx = await ethScanner.getTx(txHash);
-    validate(tx, ethTx, logger);
+    validator.validate(tx, ethTx);
   }
 }
 
@@ -21,6 +21,7 @@ export async function validateAllMeshTxs(
 export async function validateEthTx(
   meshScanner: IMeshScanner,
   ethScanner: IEthScanner,
+  validator: Validator,
   logger: Logger,
   txHash: string
 ) {
@@ -31,13 +32,14 @@ export async function validateEthTx(
   }
   const bridgeTxs = await meshScanner.fetchAllTxs();
   const bridgeTx = bridgeTxs[ethTx.txHash];
-  validate(bridgeTx, ethTx, logger);
+  validator.validate(bridgeTx, ethTx);
 }
 
 // Gets all PolyLocker events and attempts to find the corresponding Polymesh events.
 export async function validateAllEthTxs(
   meshScanner: IMeshScanner,
   ethScanner: IEthScanner,
+  validator: Validator,
   logger: Logger
 ) {
   const meshTxs = await meshScanner.fetchAllTxs();
@@ -48,6 +50,6 @@ export async function validateAllEthTxs(
       logger.warn(`Mesh Tx was not found by tx_hash: ${ethTx.txHash}`);
       continue;
     }
-    validate(meshTx, ethTx, logger);
+    validator.validate(meshTx, ethTx);
   }
 }

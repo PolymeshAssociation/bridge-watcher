@@ -14,6 +14,8 @@ import { ApiPromise, WsProvider } from "@polkadot/api";
 import { EthScanner } from "./lib/EthScanner";
 import { MeshScanner } from "./lib/MeshScanner";
 import { Slack } from "./lib/Slack";
+import { Validator } from "./lib/Validator";
+import { Subscriber } from "./lib/Subscriber";
 const schemaPath = path.join(__dirname, "data", "polymesh_schema.json");
 require("dotenv").config(); // Load .env file
 const schemaUrl =
@@ -40,11 +42,16 @@ if (!fs.existsSync(schemaPath)) {
 }
 
 const main = async () => {
-  let ethScanner: EthScanner, meshScanner: MeshScanner;
+  let ethScanner: EthScanner,
+    meshScanner: MeshScanner,
+    validator: Validator,
+    subscriber: Subscriber;
   let setup = async () => {
     const opts = program.opts();
     ethScanner = new EthScanner(opts.ethURL, opts.contract, logger);
     const slack = new Slack(opts.slackHook, logger);
+    const disableSlack = program.args[0] !== "watch";
+    validator = new Validator(logger, slack, disableSlack);
     const { types, rpc } = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
     const provider = new WsProvider(opts.polymeshURL);
     const api = await ApiPromise.create({
@@ -52,7 +59,8 @@ const main = async () => {
       types,
       rpc,
     });
-    meshScanner = new MeshScanner(api, logger, slack);
+    meshScanner = new MeshScanner(api, logger);
+    subscriber = new Subscriber(meshScanner, ethScanner, validator, logger);
   };
   program.version("0.0.1");
   program.requiredOption(
@@ -88,7 +96,7 @@ const main = async () => {
     )
     .action(async () => {
       await setup();
-      meshScanner.subscribe(ethScanner);
+      meshScanner.subscribe(subscriber.eventHandler);
     });
   program
     .command("eth")
@@ -97,7 +105,7 @@ const main = async () => {
     )
     .action(async () => {
       await setup();
-      await validateAllEthTxs(meshScanner, ethScanner, logger);
+      await validateAllEthTxs(meshScanner, ethScanner, validator, logger);
       process.exit();
     });
   program
@@ -107,7 +115,7 @@ const main = async () => {
     )
     .action(async () => {
       await setup();
-      await validateAllMeshTxs(meshScanner, ethScanner, logger);
+      await validateAllMeshTxs(meshScanner, ethScanner, validator);
       process.exit();
     });
   program
@@ -115,7 +123,7 @@ const main = async () => {
     .argument("<txHash>", "transaction hash")
     .action(async (txHash) => {
       await setup();
-      await validateEthTx(meshScanner, ethScanner, logger, txHash);
+      await validateEthTx(meshScanner, ethScanner, validator, logger, txHash);
       process.exit();
     });
   await program.parseAsync();

@@ -7,7 +7,7 @@
     "start": "yarn run dev",
     "test": "jest",
     "build": "tsc",
-    "dev": "tsc && node ./built/src/index.js"
+    "dev": "tsc && node ./dist/src/main.js"
   },
   "keywords": [
     "substrate",

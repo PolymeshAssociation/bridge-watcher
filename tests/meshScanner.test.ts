@@ -1,6 +1,7 @@
-import { makeMeshHandler } from "../src/lib/MeshScanner";
+import { Subscriber } from "../src/lib/Subscriber";
 import { Slack } from "../src/lib/Slack";
 import { slackMock } from "./helpers";
+import { Validator } from "../src/lib/Validator";
 
 const {
   rawMeshTx,
@@ -12,7 +13,7 @@ const {
   logger,
 } = require("./helpers");
 class MockCodec {
-  constructor(private value: Object) {}
+  constructor(private value: unknown) {}
   toJSON() {
     return this.value;
   }
@@ -46,12 +47,17 @@ const invalidEvent = {
   data: ["0x6000", rawBadMeshTx],
 };
 
-const handler = makeMeshHandler(
+const validator = new Validator(logger, slackMock);
+
+const subscriber = new Subscriber(
   meshScannerMock,
   ethScannerMock,
-  logger,
-  slackMock as unknown as Slack
+  validator,
+  logger
 );
+
+const handler = subscriber.eventHandler;
+
 describe("handleEvent", () => {
   afterEach(() => jest.clearAllMocks());
 
