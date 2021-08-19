@@ -58,6 +58,7 @@ export const meshScannerMock = {
   fetchAllTxs: jest.fn().mockReturnValue(meshMap),
   subscribe: jest.fn(),
   getProposal: jest.fn(),
+  freeze: jest.fn(),
   logger: jest.fn(),
 };
 

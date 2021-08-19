@@ -1,4 +1,6 @@
+import { ApiPromise, Keyring } from "@polkadot/api";
 import { Logger } from "winston";
+import { IMeshScanner } from "./MeshScanner";
 import { EthTx } from "./models/EthTx";
 import { MeshTx } from "./models/MeshTx";
 import { ISlack } from "./Slack";
@@ -7,7 +9,10 @@ export class Validator {
   constructor(
     private logger: Logger,
     private slack: ISlack,
-    private disableSlack: boolean = false
+    private meshScanner: IMeshScanner,
+    // watcherMode enables posting to Slack + freezing the bridge when invalid transaction are encountered.
+    // should be true only when watching current transactions.
+    private watcherMode: boolean = false
   ) {}
 
   public validate(bridgeTx: MeshTx, ethTx: EthTx) {
@@ -15,13 +20,16 @@ export class Validator {
     if (errors.length > 0) {
       const message = this.createMessage(bridgeTx, ethTx);
       this.logger.warn(`[INVALID] ${message}. Problems: ${errors}`);
-      this.postToSlack("Invalid bridgeTx detected\n" + message);
+      if (this.watcherMode) {
+        this.postToSlack("Invalid bridgeTx detected\n" + message);
+        this.meshScanner.freeze();
+      }
     } else {
       this.logger.info("Valid transaction detected");
     }
   }
 
-  public validateTx(meshTx: MeshTx, ethTx: EthTx) {
+  private validateTx(meshTx: MeshTx, ethTx: EthTx) {
     let errors = [];
     // we should at least have either meshTx or ethTx
     if (!meshTx) {
@@ -68,7 +76,6 @@ export class Validator {
   }
 
   private postToSlack(message: string) {
-    if (this.disableSlack) return;
     this.slack.post(message);
   }
 }
