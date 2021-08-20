@@ -33,7 +33,8 @@ export class MeshScanner implements IMeshScanner {
         meshAddress,
         tx.amount,
         hexEncode(tx.tx_hash),
-        tx.nonce
+        tx.nonce,
+        "fetchAllTxs"
       );
       meshTxs[internalTx.tx_hash] = meshTx;
     }

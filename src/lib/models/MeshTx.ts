@@ -5,6 +5,7 @@ export class MeshTx {
     public meshAddress: string,
     public amount: BN,
     public txHash: string,
-    public nonce: number
+    public nonce: number,
+    public type: string
   ) {}
 }

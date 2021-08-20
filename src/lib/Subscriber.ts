@@ -39,14 +39,14 @@ export class Subscriber {
     const [submitter, data] = event.data;
     if (Array.isArray(data)) {
       for (const d of data) {
-        const tx = this.makeBridgeTx(d);
+        const tx = this.makeBridgeTx(d, event.method);
         if (tx) {
           const ethTx = await this.ethScanner.getTx(tx.txHash);
           this.validator.validate(tx, ethTx);
         }
       }
     } else {
-      const tx = this.makeBridgeTx(data);
+      const tx = this.makeBridgeTx(data, event.method);
       if (tx) {
         const ethTx = await this.ethScanner.getTx(tx.txHash);
         this.validator.validate(tx, ethTx);
@@ -61,7 +61,7 @@ export class Subscriber {
     }
   }
 
-  // A multisig proposal event only references the proposal.
+  // A multisig proposal event only references the proposal so we need to fetch the data from the chain
   async handleMultsigTx(event: any) {
     if (event.method !== "ProposalAdded") return;
     const [submitter, contractAddr, proposalId] = event.data;
@@ -80,14 +80,14 @@ export class Subscriber {
     // A bridge tx proposal maybe a batch or individual style.
     if (Array.isArray(args["bridge_txs"])) {
       for (const data of args["bridge_txs"]) {
-        const tx = this.makeBridgeTx(data);
+        const tx = this.makeBridgeTx(data, event.method);
         if (tx) {
           const ethTx = await this.ethScanner.getTx(tx.txHash);
           this.validator.validate(tx, ethTx);
         }
       }
     } else if (args["bridge_tx"]) {
-      const tx = this.makeBridgeTx(args["bridge_tx"]);
+      const tx = this.makeBridgeTx(args["bridge_tx"], event.method);
       if (tx) {
         const ethTx = await this.ethScanner.getTx(tx.txHash);
         this.validator.validate(tx, ethTx);
@@ -98,7 +98,8 @@ export class Subscriber {
   }
 
   // attempts to serialize data into MeshTx
-  makeBridgeTx(meshTx: any): MeshTx {
+  makeBridgeTx(meshTx: any, method: string): MeshTx {
+    if (!meshTx) return null;
     const amount = meshTx["value"]
       ? new BN(meshTx["value"])
       : new BN(meshTx["amount"]);
@@ -110,7 +111,8 @@ export class Subscriber {
         meshTx["mesh_address"] || meshTx["recipient"],
         amount,
         hexEncode(meshTx["tx_hash"]),
-        meshTx["nonce"]
+        meshTx["nonce"],
+        method
       );
     } else {
       return null;
