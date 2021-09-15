@@ -18,14 +18,21 @@ export class Validator {
   public validate(bridgeTx: MeshTx, ethTx: EthTx) {
     const errors = this.validateTx(bridgeTx, ethTx);
     if (errors.length > 0) {
-      const message = this.createMessage(bridgeTx, ethTx);
-      this.logger.warn(`[INVALID] ${message}. Problems: ${errors}`);
+      const message = `${this.createMessageBase(
+        bridgeTx,
+        ethTx
+      )} \n*Problems*: ${errors}`;
       if (this.watcherMode) {
-        this.postToSlack("Invalid bridgeTx detected\n" + message);
+        this.postToSlack("*Invalid bridgeTx detected!* \n\n" + message);
         this.meshScanner.freeze();
       }
+      // strip out slack formatting characters for the log line
+      const rawMsg = message.replace(/\n/g, " ").replace(/\*/g, "");
+      this.logger.warn(`[INVALID] ${rawMsg}`);
     } else {
-      this.logger.info("Valid transaction detected");
+      this.logger.info(
+        `Valid transaction detected: Eth txHash: ${ethTx.txHash}`
+      );
     }
   }
 
@@ -34,45 +41,44 @@ export class Validator {
     // we should at least have either meshTx or ethTx
     if (!meshTx) {
       errors.push(
-        `Mesh transaction was not found for PolyLock transaction: ${ethTx.txHash}`
+        `\nMesh transaction was not found for PolyLock transaction: ${ethTx.txHash}`
       );
       return errors;
     }
     if (!ethTx) {
       errors.push(
-        `PolyLocker transaction was not found by tx_hash: ${meshTx.txHash}`
+        `\nPolyLocker transaction was not found by tx_hash: ${meshTx.txHash}`
       );
       return errors;
     }
     const meshAmt = meshTx.amount;
     if (meshAmt.toString() !== ethTx.tokens.toString()) {
       errors.push(
-        `wrong amount: Polymesh: ${meshAmt.toString()}, PolyLocker: ${ethTx.tokens.toString()}`
+        `\nwrong amount: Polymesh: ${meshAmt.toString()}, PolyLocker: ${ethTx.tokens.toString()}`
       );
     }
 
     if (meshTx.txHash != ethTx.txHash) {
       errors.push(
-        `wrong hash: Polymesh: ${meshTx.txHash}, PolyLocker: ${ethTx.txHash}`
+        `\nwrong hash: Polymesh: ${meshTx.txHash}, PolyLocker: ${ethTx.txHash}`
       );
     }
 
     const meshAddress = meshTx.meshAddress;
     if (meshAddress !== ethTx.meshAddress) {
       errors.push(
-        `wrong polymesh address: Polymesh: ${meshAddress} PolyLocker intended address: ${ethTx.meshAddress}`
+        `\nwrong polymesh address: \n  - Polymesh recipient: ${meshAddress} \n  - PolyLocker intended: ${ethTx.meshAddress}`
       );
     }
     return errors;
   }
 
-  private createMessage(bridgeTx: MeshTx, ethTx: EthTx) {
+  private createMessageBase(bridgeTx: MeshTx, ethTx: EthTx) {
+    const type = bridgeTx ? bridgeTx.type : "unknown";
     const meshAddress = bridgeTx ? bridgeTx.meshAddress : "unknown";
     const bridgeNonce = bridgeTx ? bridgeTx.nonce : "unknown";
     const txHash = ethTx ? ethTx.txHash : "unknown";
-    return `Mesh Address: ${meshAddress} ${
-      bridgeNonce ? "BridgeTx nonce: " + bridgeNonce + ", " : ""
-    }eth tx_hash: ${txHash}`;
+    return `*Event Type*: ${type} \n*Mesh Address*: ${meshAddress}\n *Bridge Nonce*: ${bridgeNonce} \n*Eth txHash*: ${txHash}\n`;
   }
 
   private postToSlack(message: string) {
