@@ -12,6 +12,12 @@ This is configurable with:
 
 These can be set in the `.env` file or as normal ENV variables.
 
+If using the docker image, you can use an env file to pass these variable in
+
+```sh
+  docker run -it --env-file .env bridge_watcher
+```
+
 `main()` in `index.js` will subscribe to all Polymesh events and will validate the incoming `BridgeTx`. It will use the `tx_hash` to lookup the PolyLocker transaction, and compare the fields. If they differ it will log the discrepancy.
 
 We may want to change this pattern and use the `tx_hash` to lookup the PolyLocker from the WEB3_URL instead of creating a potentially large in memory data structure.
