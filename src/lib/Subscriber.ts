@@ -32,6 +32,7 @@ export class Subscriber {
   }
 
   async handleBridgeTx(event: any) {
+    this.logger.debug(`Handling Bridge event: ${event.method}`);
     if (event.method === "TxsHandled") {
       this.handleTxsHandled(event);
       return;
@@ -41,28 +42,29 @@ export class Subscriber {
       for (const d of data) {
         const tx = this.makeBridgeTx(d, event.method);
         if (tx) {
-          const ethTx = await this.ethScanner.getTx(tx.txHash);
-          this.validator.validate(tx, ethTx);
+          const ethTxs = await this.ethScanner.getTx(tx.txHash);
+          this.validator.validateBridgeTxHash(new Set<MeshTx>([tx]), ethTxs);
         }
       }
     } else {
       const tx = this.makeBridgeTx(data, event.method);
       if (tx) {
-        const ethTx = await this.ethScanner.getTx(tx.txHash);
-        this.validator.validate(tx, ethTx);
+        const ethTxs = await this.ethScanner.getTx(tx.txHash);
+        this.validator.validateBridgeTxHash(new Set<MeshTx>([tx]), ethTxs);
       }
     }
   }
 
   async handleTxsHandled(event: any) {
     const [txs] = event.data;
-    for (const [nonce, error] of txs) {
-      this.logger.info(`bridge tx handled, nonce: ${nonce.toHuman()}`);
+    for (const [recipient, nonce, error] of txs) {
+      this.logger.info(`bridge tx handled, recipient: ${recipient} nonce: ${nonce.toHuman()} error: ${error}`);
     }
   }
 
   // A multisig proposal event only references the proposal so we need to fetch the data from the chain
   async handleMultsigTx(event: any) {
+    this.logger.debug(`Handling MultiSig event: ${event.method}`);
     if (event.method !== "ProposalAdded") return;
     const [submitter, contractAddr, proposalId] = event.data;
     const proposal = await this.meshScanner.getProposal(
@@ -82,15 +84,15 @@ export class Subscriber {
       for (const data of args["bridge_txs"]) {
         const tx = this.makeBridgeTx(data, event.method);
         if (tx) {
-          const ethTx = await this.ethScanner.getTx(tx.txHash);
-          this.validator.validate(tx, ethTx);
+          const ethTxs = await this.ethScanner.getTx(tx.txHash);
+          this.validator.validateBridgeTxHash(new Set<MeshTx>([tx]), ethTxs);
         }
       }
     } else if (args["bridge_tx"]) {
       const tx = this.makeBridgeTx(args["bridge_tx"], event.method);
       if (tx) {
-        const ethTx = await this.ethScanner.getTx(tx.txHash);
-        this.validator.validate(tx, ethTx);
+        const ethTxs = await this.ethScanner.getTx(tx.txHash);
+        this.validator.validateBridgeTxHash(new Set<MeshTx>([tx]), ethTxs);
       }
     } else {
       this.logger.info(`Received proposal that was not a bridge_tx`);

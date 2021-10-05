@@ -3,7 +3,7 @@ import BN from "bn.js";
 import { EthTx } from "../src/lib/models/EthTx";
 import { MeshTx } from "../src/lib/models/MeshTx";
 export const ethTx = new EthTx(
-  "1",
+  1,
   "0x123",
   "5E123",
   new BN(100),
@@ -13,7 +13,7 @@ export const ethTx = new EthTx(
 );
 
 export const badEthTx = new EthTx(
-  "1",
+  1,
   "0x123",
   "5EBOB",
   new BN(100),
@@ -22,8 +22,8 @@ export const badEthTx = new EthTx(
   "13"
 );
 
-const meshTx = new MeshTx("5E123", new BN(100), "0x01", 3);
-const badMeshTx = new MeshTx("5EVE", new BN(9999), "0xff", 4);
+const meshTx = new MeshTx("5E123", new BN(100), "0x01", 3, "Type");
+const badMeshTx = new MeshTx("5EVE", new BN(9999), "0xff", 4, "Type");
 
 export const rawMeshTx = {
   nonce: 3,
@@ -89,6 +89,6 @@ const winstonMock = {
 };
 export const logger = winstonMock.createLogger();
 
-export const expectedValidMsg = "Valid transaction detected";
+export const expectedValidMsg = "Valid transaction detected: Eth txHash: 0x01";
 export const expectedErrorMsg =
   "[INVALID] Mesh Address: 5EVE BridgeTx nonce: 4, eth tx_hash: 0xff. Problems: wrong amount: Polymesh: 9999, PolyLocker: 100,wrong polymesh address: Polymesh: 5EVE PolyLocker intended address: 5EBOB";

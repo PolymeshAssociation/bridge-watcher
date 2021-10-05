@@ -15,6 +15,40 @@ export class Validator {
     private watcherMode: boolean = false
   ) {}
 
+  public validateBridgeTxHash(bridgeTxs: Set<MeshTx>, ethTxs: Set<EthTx>) {
+    bridgeTxs.forEach(bridgeTx => {
+      let found: boolean = false;
+      if (ethTxs) {
+        ethTxs.forEach(ethTx => {
+          if (bridgeTx.nonce == ethTx.event_id) {
+            found = true;
+            this.validate(bridgeTx, ethTx);          
+          }
+        });          
+      }
+      if (!found) {
+        this.validate(bridgeTx, undefined);
+      }
+    });
+  }
+  
+  public validateEthTxHash(bridgeTxs: Set<MeshTx>, ethTxs: Set<EthTx>) {
+    ethTxs.forEach(ethTx => {
+      let found: boolean = false;
+      if (bridgeTxs) {
+        bridgeTxs.forEach(bridgeTx => {
+          if (bridgeTx.nonce == ethTx.event_id) {
+            found = true;
+            this.validate(bridgeTx, ethTx);          
+          }
+        });
+      }
+      if (!found) {
+        this.validate(undefined, ethTx);
+      }
+    });
+  }
+
   public validate(bridgeTx: MeshTx, ethTx: EthTx) {
     const errors = this.validateTx(bridgeTx, ethTx);
     if (errors.length > 0) {
@@ -64,7 +98,7 @@ export class Validator {
       );
     }
 
-    const meshAddress = meshTx.meshAddress;
+    const meshAddress = meshTx.meshAddress.toString();
     if (meshAddress !== ethTx.meshAddress) {
       errors.push(
         `\nwrong polymesh address: \n  - Polymesh recipient: ${meshAddress} \n  - PolyLocker intended: ${ethTx.meshAddress}`
@@ -74,6 +108,7 @@ export class Validator {
   }
 
   private createMessageBase(bridgeTx: MeshTx, ethTx: EthTx) {
+    //TODO: Create message that is appropriate if either bridgeTx or ethTx is null
     const type = bridgeTx ? bridgeTx.type : "unknown";
     const meshAddress = bridgeTx ? bridgeTx.meshAddress : "unknown";
     const bridgeNonce = bridgeTx ? bridgeTx.nonce : "unknown";

@@ -9,27 +9,27 @@ const validator = new Validator(logger, slackMock);
 
 describe("validateTx", () => {
   test("it should validate matching transactions", () => {
-    const meshTx = new MeshTx(meshAddress, amount, txHash, 1);
+    const meshTx = new MeshTx(meshAddress, amount, txHash, 1, "Type");
     const errors = validator.validateTx(meshTx, ethTx);
     expect(errors).toHaveLength(0);
   });
 
   test("it should detect differing amounts", () => {
-    const meshTx = new MeshTx(meshAddress, new BN(9999), txHash, 1);
+    const meshTx = new MeshTx(meshAddress, new BN(9999), txHash, 1, "Type");
     const errors = validator.validateTx(meshTx, ethTx);
 
     expect(errors).toHaveLength(1);
   });
 
   test("it should detect differing tx_hashes", () => {
-    const meshTx = new MeshTx(meshAddress, amount, "0x999", 1);
+    const meshTx = new MeshTx(meshAddress, amount, "0x999", 1, "Type");
     const errors = validator.validateTx(meshTx, ethTx);
 
     expect(errors).toHaveLength(1);
   });
 
   test("it should detect differing mesh_addresses", () => {
-    const meshTx = new MeshTx("5EINVALID", amount, txHash, 1);
+    const meshTx = new MeshTx("5EINVALID", amount, txHash, 1, "Type");
     const errors = validator.validateTx(meshTx, ethTx);
 
     expect(errors).toHaveLength(1);

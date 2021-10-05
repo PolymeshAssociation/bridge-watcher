@@ -8,8 +8,8 @@ import { EthTx } from "./models/EthTx";
 import BN from "bn.js";
 
 export interface IEthScanner {
-  getTx: (txHash: string) => Promise<EthTx>;
-  listEthTxs: () => EthTx[];
+  getTx: (txHash: string) => Promise<Set<EthTx>>;
+  listEthTxs: () => { [key: string]: Set<EthTx> };
   scanAll: () => Promise<void>;
 }
 
@@ -29,7 +29,7 @@ export class EthScanner implements IEthScanner {
   }
 
   // get single PolyLocker event by transaction hash. Checks if the tx is cached otherwise attempts to fetch it
-  async getTx(txHash: string): Promise<EthTx> {
+  async getTx(txHash: string): Promise<Set<EthTx>> {
     let tx = this.getStoredTx(txHash);
     if (tx) {
       return tx;
@@ -39,24 +39,26 @@ export class EthScanner implements IEthScanner {
       this.logger.error("result was not found by txHash: ", txHash);
       return null;
     }
-
     const ethEvents = await this.polyLocker.getPastEvents("PolyLocked", {
       fromBlock: result.blockNumber,
       toBlock: result.blockNumber,
     });
-    const log = ethEvents.find((e) => e.transactionHash === txHash);
-    const event = this.parseLog(log);
-    if (event) {
-      this.db.insertEthTx(event);
-    }
-    return event;
+    let ethTxs: Set<EthTx> = new Set<EthTx>();
+    ethEvents.forEach((event: any) => {
+      const ethTx = this.parseLog(event);
+      if (ethTx) {
+        this.db.insertEthTx(ethTx);
+      }
+      ethTxs.add(ethTx);    
+    });
+    return ethTxs;
   }
 
-  private getStoredTx(txHash: string): EthTx {
+  private getStoredTx(txHash: string): Set<EthTx> {
     return this.db.getEthTx(txHash);
   }
 
-  listEthTxs(): EthTx[] {
+  listEthTxs(): { [key: string]: Set<EthTx> } {
     return this.db.listEthTxs();
   }
 
@@ -85,7 +87,7 @@ export class EthScanner implements IEthScanner {
   async scan(): Promise<void> {
     let startingBlock = this.startBlock;
     try {
-      let confirmations = parseInt(process.env.CONFIRMATIONS);
+      let confirmations = parseInt(process.env.CONFIRMATIONS) || 3;
       if (!this.latestBlock) {
         this.latestBlock = await this.getCurrentBlock();
       }
