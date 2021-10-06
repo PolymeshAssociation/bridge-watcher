@@ -13,7 +13,7 @@ export const ethTx = new EthTx(
 );
 
 export const badEthTx = new EthTx(
-  1,
+  2,
   "0x123",
   "5EBOB",
   new BN(100),
@@ -22,36 +22,36 @@ export const badEthTx = new EthTx(
   "13"
 );
 
-const meshTx = new MeshTx("5E123", new BN(100), "0x01", 3, "Type");
-const badMeshTx = new MeshTx("5EVE", new BN(9999), "0xff", 4, "Type");
+const meshTx = new MeshTx("5E123", new BN(100), "0x01", 1, "TxHandled");
+const badMeshTx = new MeshTx("5EVE", new BN(9999), "0xff", 2, "TxHandled");
 
 export const rawMeshTx = {
-  nonce: 3,
+  nonce: 1,
   value: new BN(100),
   mesh_address: "5E123",
   tx_hash: "0x01",
 };
 
 export const rawBadMeshTx = {
-  nonce: 4,
+  nonce: 2,
   value: new BN(9999),
   mesh_address: "5EVE",
   tx_hash: "0xff",
 };
-export const ethMap: { [key: string]: EthTx } = {
-  "0x01": ethTx,
-  "0xff": badEthTx,
+export const ethMap: { [key: string]: Set<EthTx> } = {
+  "0x01": new Set([ethTx]),
+  "0xff": new Set([badEthTx]),
 };
 export const meshMap = {
-  "0x01": meshTx,
-  "0xff": badMeshTx,
+  "0x01": new Set([meshTx]),
+  "0xff": new Set([badMeshTx]),
 };
 
 export const ethScannerMock = {
   getTx: jest.fn().mockImplementation((txHash) => ethMap[txHash]),
   scanAll: jest.fn(),
   scan: jest.fn(),
-  listEthTxs: jest.fn().mockReturnValue([ethTx, badEthTx]),
+  listEthTxs: jest.fn().mockReturnValue(ethMap),
 };
 
 export const meshScannerMock = {
@@ -91,4 +91,4 @@ export const logger = winstonMock.createLogger();
 
 export const expectedValidMsg = "Valid transaction detected: Eth txHash: 0x01";
 export const expectedErrorMsg =
-  "[INVALID] Mesh Address: 5EVE BridgeTx nonce: 4, eth tx_hash: 0xff. Problems: wrong amount: Polymesh: 9999, PolyLocker: 100,wrong polymesh address: Polymesh: 5EVE PolyLocker intended address: 5EBOB";
+  "[INVALID] Event Type: TxHandled  Mesh Address: 5EVE  Bridge Nonce: 2  Eth txHash: 0xff   Problems:  wrong amount: Polymesh: 9999, PolyLocker: 100, wrong polymesh address:    - Polymesh recipient: 5EVE    - PolyLocker intended: 5EBOB";

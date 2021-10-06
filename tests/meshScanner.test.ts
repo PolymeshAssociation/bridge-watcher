@@ -72,9 +72,7 @@ describe("handleEvent", () => {
     });
     test("with invalid event", async () => {
       await handler([{ event: invalidEvent }]);
-      const expecteErr =
-        "[INVALID] Event Type: TxHandled  Mesh Address: 5EVE  Bridge Nonce: 4  Eth txHash: 0xff   Problems:  wrong amount: Polymesh: 9999, PolyLocker: 100, wrong polymesh address:    - Polymesh recipient: 5EVE    - PolyLocker intended: 5EBOB";
-      expect(logger.warn).toHaveBeenCalledWith(expecteErr);
+      expect(logger.warn).toHaveBeenCalledWith(expectedErrorMsg);
       expect(logger.info).not.toHaveBeenCalled();
       expect(slackMock.post).toHaveBeenCalled();
       expect(meshScannerMock.freeze).toHaveBeenCalled();
@@ -93,7 +91,7 @@ describe("handleEvent", () => {
     ]);
     expect(logger.info).toHaveBeenCalledWith(expectedValidMsg);
     const expectedErr =
-      "[INVALID] Event Type: batchProposeBridgeTx  Mesh Address: 5EVE  Bridge Nonce: 4  Eth txHash: 0xff   Problems:  wrong amount: Polymesh: 9999, PolyLocker: 100, wrong polymesh address:    - Polymesh recipient: 5EVE    - PolyLocker intended: 5EBOB";
+      "[INVALID] Event Type: batchProposeBridgeTx  Mesh Address: 5EVE  Bridge Nonce: 2  Eth txHash: 0xff   Problems:  wrong amount: Polymesh: 9999, PolyLocker: 100, wrong polymesh address:    - Polymesh recipient: 5EVE    - PolyLocker intended: 5EBOB";
     expect(logger.warn).toHaveBeenCalledWith(expectedErr);
   });
 
@@ -125,7 +123,7 @@ describe("handleEvent", () => {
       expect(meshScannerMock.getProposal).toHaveBeenCalledWith("0x9456", "24");
       expect(logger.info).toHaveBeenCalledWith(expectedValidMsg);
       const expectedErr =
-        "[INVALID] Event Type: ProposalAdded  Mesh Address: 5EVE  Bridge Nonce: 4  Eth txHash: 0xff   Problems:  wrong amount: Polymesh: 9999, PolyLocker: 100, wrong polymesh address:    - Polymesh recipient: 5EVE    - PolyLocker intended: 5EBOB";
+        "[INVALID] Event Type: ProposalAdded  Mesh Address: 5EVE  Bridge Nonce: 2  Eth txHash: 0xff   Problems:  wrong amount: Polymesh: 9999, PolyLocker: 100, wrong polymesh address:    - Polymesh recipient: 5EVE    - PolyLocker intended: 5EBOB";
       expect(logger.warn).toHaveBeenCalledWith(expectedErr);
     });
   });

@@ -1,7 +1,7 @@
 import { Logger } from "winston";
 import { EthTx } from "./models/EthTx";
 import fs from "fs";
-const getDirName = require('path').dirname;
+const getDirName = require("path").dirname;
 import path from "path";
 import BN from "bn.js";
 
@@ -11,6 +11,7 @@ export default class DB {
     polylocker: { [key: string]: Set<EthTx> };
     startingBlock: number;
   };
+
   // saves contracts transactions to disk to save scanning time
   constructor(private contractAddr: string, private logger: Logger) {
     const parentDir = path.resolve(__dirname, "..");
@@ -30,7 +31,7 @@ export default class DB {
 
   insertEthTx(tx: EthTx) {
     if (!this.store.polylocker[tx.txHash]) {
-      this.store.polylocker[tx.txHash] = new Set<EthTx>();  
+      this.store.polylocker[tx.txHash] = new Set<EthTx>();
     }
     this.store.polylocker[tx.txHash].add(tx);
   }
@@ -47,8 +48,14 @@ export default class DB {
     this.store.startingBlock = startBlock;
   }
   save() {
-    fs.mkdirSync(getDirName(this.path), { recursive: true } );
-    fs.writeFileSync(this.path, JSON.stringify(this.store));
+    fs.mkdirSync(getDirName(this.path), { recursive: true });
+    fs.writeFileSync(
+      this.path,
+      JSON.stringify(this.store, (key, value) =>
+        // store sets as [] instead of the default {} to make loading easier
+        value instanceof Set ? [...value] : value
+      )
+    );
   }
   load() {
     if (fs.existsSync(this.path)) {
@@ -57,10 +64,7 @@ export default class DB {
       this.store = JSON.parse(data);
       for (let entry in this.store.polylocker) {
         this.store.polylocker[entry].forEach((ethTx) => {
-          ethTx.tokens = new BN(
-            ethTx.tokens,
-            16
-          );
+          ethTx.tokens = new BN(ethTx.tokens, 16);
         });
       }
       this.logger.info(`loaded store from ${this.path}`);

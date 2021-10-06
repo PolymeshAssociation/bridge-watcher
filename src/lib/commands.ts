@@ -13,7 +13,7 @@ export async function validateAllMeshTxs(
   await ethScanner.scanAll();
   const bridgeTxMap = await meshScanner.fetchAllTxs();
   for (const [txHash, bridgeTxs] of Object.entries(bridgeTxMap)) {
-    logger.debug(`Checking ${txHash}`)
+    logger.debug(`Checking ${txHash}`);
     const ethTxs = await ethScanner.getTx(txHash);
     validator.validateBridgeTxHash(bridgeTxs, ethTxs);
   }
@@ -44,9 +44,9 @@ export async function validateAllEthTxs(
   logger: Logger
 ) {
   await ethScanner.scanAll();
-  const bridgeTxs = await meshScanner.fetchAllTxs();  
-  for (const [txHash, ethTxs] of Object.entries(ethScanner.listEthTxs())) {    
-    logger.debug(`Checking ${txHash}`)
+  const bridgeTxs = await meshScanner.fetchAllTxs();
+  for (const [txHash, ethTxs] of Object.entries(ethScanner.listEthTxs())) {
+    logger.debug(`Checking ${txHash}`);
     validator.validateEthTxHash(bridgeTxs[txHash], ethTxs);
   }
 }

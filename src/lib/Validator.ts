@@ -16,30 +16,30 @@ export class Validator {
   ) {}
 
   public validateBridgeTxHash(bridgeTxs: Set<MeshTx>, ethTxs: Set<EthTx>) {
-    bridgeTxs.forEach(bridgeTx => {
+    bridgeTxs.forEach((bridgeTx) => {
       let found: boolean = false;
       if (ethTxs) {
-        ethTxs.forEach(ethTx => {
+        ethTxs.forEach((ethTx) => {
           if (bridgeTx.nonce == ethTx.event_id) {
             found = true;
-            this.validate(bridgeTx, ethTx);          
+            this.validate(bridgeTx, ethTx);
           }
-        });          
+        });
       }
       if (!found) {
         this.validate(bridgeTx, undefined);
       }
     });
   }
-  
+
   public validateEthTxHash(bridgeTxs: Set<MeshTx>, ethTxs: Set<EthTx>) {
-    ethTxs.forEach(ethTx => {
+    ethTxs.forEach((ethTx) => {
       let found: boolean = false;
       if (bridgeTxs) {
-        bridgeTxs.forEach(bridgeTx => {
+        bridgeTxs.forEach((bridgeTx) => {
           if (bridgeTx.nonce == ethTx.event_id) {
             found = true;
-            this.validate(bridgeTx, ethTx);          
+            this.validate(bridgeTx, ethTx);
           }
         });
       }
@@ -75,7 +75,7 @@ export class Validator {
     // we should at least have either meshTx or ethTx
     if (!meshTx) {
       errors.push(
-        `\nMesh transaction was not found for PolyLock transaction: ${ethTx.txHash}`
+        `\nMesh transaction was not found for PolyLocker transaction: ${ethTx.txHash}`
       );
       return errors;
     }

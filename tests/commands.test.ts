@@ -18,19 +18,20 @@ describe("bridge watcher commands", () => {
   afterEach(() => jest.clearAllMocks());
 
   test("mesh", async () => {
-    await validateAllMeshTxs(meshScannerMock, ethScannerMock, validator, logger);
+    await validateAllMeshTxs(
+      meshScannerMock,
+      ethScannerMock,
+      validator,
+      logger
+    );
     expect(logger.info).toHaveBeenCalledWith(expectedValidMsg);
-    const expectedErr =
-      "[INVALID] Event Type: Type  Mesh Address: 5EVE  Bridge Nonce: 4  Eth txHash: 0xff   Problems:  wrong amount: Polymesh: 9999, PolyLocker: 100, wrong polymesh address:    - Polymesh recipient: 5EVE    - PolyLocker intended: 5EBOB";
-    expect(logger.warn).toHaveBeenCalledWith(expectedErr);
+    expect(logger.warn).toHaveBeenCalledWith(expectedErrorMsg);
   });
 
   test("eth", async () => {
     await validateAllEthTxs(meshScannerMock, ethScannerMock, validator, logger);
     expect(logger.info).toHaveBeenCalledWith(expectedValidMsg);
-    const expectedErr =
-      "[INVALID] Event Type: Type  Mesh Address: 5EVE  Bridge Nonce: 4  Eth txHash: 0xff   Problems:  wrong amount: Polymesh: 9999, PolyLocker: 100, wrong polymesh address:    - Polymesh recipient: 5EVE    - PolyLocker intended: 5EBOB";
-    expect(logger.warn).toHaveBeenCalledWith(expectedErr);
+    expect(logger.warn).toHaveBeenCalledWith(expectedErrorMsg);
   });
 
   test("tx with good transaction", async () => {
@@ -54,8 +55,6 @@ describe("bridge watcher commands", () => {
       "0xff"
     );
     expect(logger.info).not.toHaveBeenCalled();
-    const expectedErr =
-      "[INVALID] Event Type: Type  Mesh Address: 5EVE  Bridge Nonce: 4  Eth txHash: 0xff   Problems:  wrong amount: Polymesh: 9999, PolyLocker: 100, wrong polymesh address:    - Polymesh recipient: 5EVE    - PolyLocker intended: 5EBOB";
-    expect(logger.warn).toHaveBeenCalledWith(expectedErr);
+    expect(logger.warn).toHaveBeenCalledWith(expectedErrorMsg);
   });
 });

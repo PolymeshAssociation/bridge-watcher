@@ -58,7 +58,9 @@ export class Subscriber {
   async handleTxsHandled(event: any) {
     const [txs] = event.data;
     for (const [recipient, nonce, error] of txs) {
-      this.logger.info(`bridge tx handled, recipient: ${recipient} nonce: ${nonce.toHuman()} error: ${error}`);
+      this.logger.info(
+        `bridge tx handled, recipient: ${recipient} nonce: ${nonce.toHuman()} error: ${error}`
+      );
     }
   }
 
