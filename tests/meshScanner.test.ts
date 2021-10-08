@@ -38,11 +38,13 @@ meshScannerMock.getProposal = jest
 
 const validEvent = {
   section: "bridge",
+  method: "TxHandled",
   data: ["0x6000", rawMeshTx],
 };
 
 const invalidEvent = {
   section: "bridge",
+  method: "TxHandled",
   data: ["0x6000", rawBadMeshTx],
 };
 
@@ -88,7 +90,9 @@ describe("handleEvent", () => {
       },
     ]);
     expect(logger.info).toHaveBeenCalledWith(expectedValidMsg);
-    expect(logger.warn).toHaveBeenCalledWith(expectedErrorMsg);
+    const expectedErr =
+      "[INVALID] Event Type: batchProposeBridgeTx  Mesh Address: 5EVE  Bridge Nonce: 2  Eth txHash: 0xff   Problems:  wrong amount: Polymesh: 9999, PolyLocker: 100, wrong polymesh address:    - Polymesh recipient: 5EVE    - PolyLocker intended: 5EBOB";
+    expect(logger.warn).toHaveBeenCalledWith(expectedErr);
   });
 
   describe("proposalAdded", () => {
@@ -118,7 +122,9 @@ describe("handleEvent", () => {
       ]);
       expect(meshScannerMock.getProposal).toHaveBeenCalledWith("0x9456", "24");
       expect(logger.info).toHaveBeenCalledWith(expectedValidMsg);
-      expect(logger.warn).toHaveBeenCalledWith(expectedErrorMsg);
+      const expectedErr =
+        "[INVALID] Event Type: ProposalAdded  Mesh Address: 5EVE  Bridge Nonce: 2  Eth txHash: 0xff   Problems:  wrong amount: Polymesh: 9999, PolyLocker: 100, wrong polymesh address:    - Polymesh recipient: 5EVE    - PolyLocker intended: 5EBOB";
+      expect(logger.warn).toHaveBeenCalledWith(expectedErr);
     });
   });
 });

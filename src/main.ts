@@ -19,7 +19,7 @@ import { Subscriber } from "./lib/Subscriber";
 const schemaPath = path.join(__dirname, "data", "polymesh_schema.json");
 require("dotenv").config(); // Load .env file
 const schemaUrl =
-  "https://raw.githubusercontent.com/PolymathNetwork/Polymesh/tooling_v3.2.0/polymesh_schema.json";
+  "https://raw.githubusercontent.com/PolymathNetwork/Polymesh/v4.0.0/polymesh_schema.json";
 
 const logger = winston.createLogger({
   level: "debug",
@@ -120,7 +120,7 @@ const main = async () => {
     )
     .action(async () => {
       await setup();
-      await validateAllMeshTxs(meshScanner, ethScanner, validator);
+      await validateAllMeshTxs(meshScanner, ethScanner, validator, logger);
       process.exit();
     });
   program

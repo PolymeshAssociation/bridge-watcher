@@ -18,7 +18,12 @@ describe("bridge watcher commands", () => {
   afterEach(() => jest.clearAllMocks());
 
   test("mesh", async () => {
-    await validateAllMeshTxs(meshScannerMock, ethScannerMock, validator);
+    await validateAllMeshTxs(
+      meshScannerMock,
+      ethScannerMock,
+      validator,
+      logger
+    );
     expect(logger.info).toHaveBeenCalledWith(expectedValidMsg);
     expect(logger.warn).toHaveBeenCalledWith(expectedErrorMsg);
   });

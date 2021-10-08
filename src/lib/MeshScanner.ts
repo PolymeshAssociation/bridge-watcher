@@ -5,7 +5,7 @@ import { MeshTx } from "./models/MeshTx";
 import { DispatchError } from "@polkadot/types/interfaces";
 
 export interface IMeshScanner {
-  fetchAllTxs: () => Promise<{ [key: string]: MeshTx }>;
+  fetchAllTxs: () => Promise<{ [key: string]: Set<MeshTx> }>;
   getProposal: (multiSigAddr: string, proposalId: string) => Promise<any>;
   subscribe: MeshEventHandler;
   freeze: () => Promise<void>;
@@ -18,25 +18,24 @@ export class MeshScanner implements IMeshScanner {
     private mnemonic: string
   ) {}
 
-  async fetchAllTxs(): Promise<{ [key: string]: MeshTx }> {
-    let meshTxs: { [key: string]: MeshTx } = {};
+  async fetchAllTxs(): Promise<{ [key: string]: Set<MeshTx> }> {
+    let meshTxs: { [key: string]: Set<MeshTx> } = {};
     this.logger.info("fetching all bridgeTx details. This might take a while.");
+    //TODO: Does this need to be paginated
     const txs: any = await this.api.query.bridge.bridgeTxDetails.entries();
-    for (const [key, tx] of txs) {
-      const [meshAddress] = key.toHuman();
-      const internalTx = {
-        amount: tx.amount,
-        tx_hash: hexEncode(tx.tx_hash),
-        meshAddress,
-      };
+    for (const [key, tx] of txs) {      
+      const [meshAddress, nonce] = key.toHuman();
       const meshTx = new MeshTx(
         meshAddress,
         tx.amount,
         hexEncode(tx.tx_hash),
-        tx.nonce,
+        nonce,
         "fetchAllTxs"
       );
-      meshTxs[internalTx.tx_hash] = meshTx;
+      if (!meshTxs[hexEncode(tx.tx_hash)]) {
+        meshTxs[hexEncode(tx.tx_hash)] = new Set<MeshTx>();
+      }
+      meshTxs[hexEncode(tx.tx_hash)].add(meshTx);
     }
     return meshTxs;
   }
