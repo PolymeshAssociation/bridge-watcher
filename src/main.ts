@@ -135,4 +135,7 @@ const main = async () => {
   return;
 };
 
-main();
+main().catch((err) => {
+  logger.error(`encountered error: ${err}`);
+  process.exit(1);
+});
