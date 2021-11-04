@@ -15,7 +15,7 @@ These can be set in the `.env` file or as normal ENV variables.
 If using the docker image, you can use an env file to pass these variable in
 
 ```sh
-  docker run -d --env-file --restart unless-stopped .env polymathnet/bridge-watcher
+  docker run -d --env-file .env --restart unless-stopped polymathnet/bridge-watcher
 ```
 
 `main()` in `index.js` will subscribe to all Polymesh events and will validate the incoming `BridgeTx`. It will use the `tx_hash` to lookup the PolyLocker transaction, and compare the fields. If they differ it will log the discrepancy.
