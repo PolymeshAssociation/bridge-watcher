@@ -5,10 +5,15 @@ This repository contains a reconciler script for the POLY to POLYX bridge.
 EventScanner will scan the PolyLocker smart contract on the ethereum chain and store all the transactions it finds.
 This is configurable with:
 
-- POLYLOCKER_ADDR (The address of the PolyLocker contract e.g. `0x9791be69F613D372E09EbA611d25157A5512c5c8`)
-- ETH_URL (The address of the ETH node e.g. wss://kovan.infura.io/ws/v3/{PROJECT_ID})
-- START_BLOCK (What block to start scanning from.)
-- CONFIRMATIONS (How many confirmations should it take to be considered finalized)
+- POLYMESH_URL - The URL of a Polymesh node
+- CONTRACT - The address of the PolyLocker contract
+- START_BLOCK - The earliest block to scan from.
+- ETH_URL - The URL of an ethereum node
+- SLACK_HOOK - An optional hook to send slack messages to when a bad transaction is detected
+- CONFIRMATIONS - The number of confirmations to consider a transaction finalized
+- MNEMONIC - The mnemonic of the account that is able to freeze the bridge
+
+See `.env.sample` for example values
 
 These can be set in the `.env` file or as normal ENV variables.
 
@@ -42,23 +47,3 @@ Which will print a help menu. There are four commands that can be invoked like
 - `yarn start eth` Will scan all PolyLocker transactions and attempt to find the corresponding Bridge event
 - `yarn start mesh` Will scan all BridgeTx and attempt to find a matching PolyLocker transactions.
 - `yarn start tx <hash>` Attempts to find the PolyLocker transaction and verify it against BridgeTx.
-
-## Testing variables
-
-There are multiple testing networks and PolyLocker contracts. Here are some testnet / contract pairs.
-
-Kovan -> Alcyone:
-
-```
-POLYMESH_URL=wss://alcyone-rpc.polymesh.live
-CONTRACT=0x636ed3919906F6B1abe54cAEB2497067C4fC9bA7
-START_BLOCK=20331467
-```
-
-Kovan -> PME:
-
-```
-POLYMESH_URL=wss://pme.polymath.network/
-CONTRACT=0x9791be69F613D372E09EbA611d25157A5512c5c8
-START_BLOCK=18830739
-```
