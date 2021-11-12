@@ -6,7 +6,6 @@ import { MeshTx } from "./models/MeshTx";
 import { Validator } from "./Validator";
 import BN from "bn.js";
 import fetch from 'node-fetch';
-import {Headers} from 'node-fetch';
 
 // subscribes to Polymesh events.
 export class Subscriber {
