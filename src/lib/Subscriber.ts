@@ -5,6 +5,8 @@ import { IMeshScanner } from "./MeshScanner";
 import { MeshTx } from "./models/MeshTx";
 import { Validator } from "./Validator";
 import BN from "bn.js";
+import fetch from 'node-fetch';
+import {Headers} from 'node-fetch';
 
 // subscribes to Polymesh events.
 export class Subscriber {
@@ -12,7 +14,10 @@ export class Subscriber {
     private meshScanner: IMeshScanner,
     private ethScanner: IEthScanner,
     private validator: Validator,
-    private logger: Logger
+    private logger: Logger,
+    private telemetry: string,
+    private username: string,
+    private password: string,
   ) {}
 
   get eventHandler(): MeshEventHandler {
@@ -27,6 +32,21 @@ export class Subscriber {
             await this.handleMultsigTx(event);
             break;
         }
+      }
+    };
+  }
+
+  get blockHandler(): MeshBlockHandler {
+    return async (header: any) => {
+      this.logger.debug(`received ${header.number} block`);
+      // If metrics are enabled, send heartbeat to metrics
+      if (this.telemetry != undefined && this.username != undefined && this.password != undefined) {
+        return fetch(this.telemetry, {
+          method:'GET',
+          headers: {
+            'Authorization': 'Basic ' + Buffer.from(`${this.username}:${this.password}`, 'binary').toString('base64')
+          }
+        });
       }
     };
   }
