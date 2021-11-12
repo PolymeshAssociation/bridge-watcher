@@ -3,15 +3,24 @@
 This repository contains a reconciler script for the POLY to POLYX bridge.
 
 EventScanner will scan the PolyLocker smart contract on the ethereum chain and store all the transactions it finds.
+
 This is configurable with:
+
+## Required Parameters
 
 - POLYMESH_URL - The URL of a Polymesh node
 - CONTRACT - The address of the PolyLocker contract
 - START_BLOCK - The earliest block to scan from.
 - ETH_URL - The URL of an ethereum node
-- SLACK_HOOK - An optional hook to send slack messages to when a bad transaction is detected
 - CONFIRMATIONS - The number of confirmations to consider a transaction finalized
 - MNEMONIC - The mnemonic of the account that is able to freeze the bridge
+
+## Optional Parameters
+
+- TELEMETRY - The URL to report bridge-watcher heartbeats to
+- USERNAME - The username for the bridge-watcher heartbeat URL
+- PASSWORD - The password for the bridge-watcher heartbeat URL
+- SLACK_HOOK - A slack hook to send message to when a bad transaction is detected
 
 See `.env.sample` for example values
 

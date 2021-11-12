@@ -60,7 +60,7 @@ const main = async () => {
     });
     meshScanner = new MeshScanner(api, logger, opts.mnemonic);
     validator = new Validator(logger, slack, meshScanner, watcherMode);
-    subscriber = new Subscriber(meshScanner, ethScanner, validator, logger);
+    subscriber = new Subscriber(meshScanner, ethScanner, validator, logger, opts.telemetry, opts.username, opts.password);
   };
   program.version("0.0.1");
   program.requiredOption(
@@ -93,6 +93,21 @@ const main = async () => {
     "Mnemonic for the bridge freezer admin account. Overrides env variable $MNEMONIC",
     process.env.MNEMONIC
   );
+  program.option(
+    "-u --username <string>",
+    "Username for telemetry. Overrides env variable $USERNAME",
+    process.env.USERNAME
+  );
+  program.option(
+    "-p --password <string>",
+    "Password for telemetry. Overrides env variable $PASSWORD",
+    process.env.PASSWORD
+  );
+  program.option(
+    "-t --telemetry <URL>",
+    "URL for telemetry. Overrides env variable $TELEMETRY",
+    process.env.TELEMETRY
+  );
 
   program
     .command("watch")
@@ -102,6 +117,7 @@ const main = async () => {
     .action(async () => {
       await setup();
       meshScanner.subscribe(subscriber.eventHandler);
+      meshScanner.beat(subscriber.blockHandler);
     });
   program
     .command("eth")

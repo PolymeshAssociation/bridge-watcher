@@ -8,6 +8,7 @@ export interface IMeshScanner {
   fetchAllTxs: () => Promise<{ [key: string]: Set<MeshTx> }>;
   getProposal: (multiSigAddr: string, proposalId: string) => Promise<any>;
   subscribe: MeshEventHandler;
+  beat: MeshBlockHandler;
   freeze: () => Promise<void>;
 }
 
@@ -46,6 +47,10 @@ export class MeshScanner implements IMeshScanner {
 
   subscribe(eventHandler: MeshEventHandler) {
     this.api.query.system.events(eventHandler);
+  }
+
+  beat(blockHandler: MeshBlockHandler) {
+    this.api.rpc.chain.subscribeNewHeads(blockHandler);
   }
 
   async freeze() {
