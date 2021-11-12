@@ -50,7 +50,7 @@ const main = async () => {
     const opts = program.opts();
     ethScanner = new EthScanner(opts.ethURL, opts.contract, logger);
     const slack = new Slack(opts.slackHook, logger);
-    const watcherMode = program.args[0] === "watch";
+    const watcherMode = !!(program.args[0] === "watch" && opts.slackHook);
     const { types, rpc } = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
     const provider = new WsProvider(opts.polymeshURL);
     const api = await ApiPromise.create({
@@ -60,7 +60,19 @@ const main = async () => {
     });
     meshScanner = new MeshScanner(api, logger, opts.mnemonic);
     validator = new Validator(logger, slack, meshScanner, watcherMode);
-    subscriber = new Subscriber(meshScanner, ethScanner, validator, logger, opts.telemetry, opts.username, opts.password);
+    subscriber = new Subscriber(
+      meshScanner,
+      ethScanner,
+      validator,
+      logger,
+      opts.telemetry,
+      opts.username,
+      opts.password
+    );
+    logger.info("[STARTUP] Bridge Watcher is starting up");
+    if (watcherMode) {
+      slack.post("Bridge Watcher is starting up");
+    }
   };
   program.version("0.0.1");
   program.requiredOption(
@@ -84,14 +96,14 @@ const main = async () => {
     process.env.ETH_URL
   );
   program.requiredOption(
-    "-h --slackHook <URL>",
-    "Slack webhook to post alerts to. Overrides env variable $SLACK_HOOK",
-    process.env.SLACK_HOOK
-  );
-  program.requiredOption(
     "-m --mnemonic <string>",
     "Mnemonic for the bridge freezer admin account. Overrides env variable $MNEMONIC",
     process.env.MNEMONIC
+  );
+  program.option(
+    "-h --slackHook <URL>",
+    "Slack webhook to post alerts to. Overrides env variable $SLACK_HOOK",
+    process.env.SLACK_HOOK
   );
   program.option(
     "-u --username <string>",
@@ -151,7 +163,24 @@ const main = async () => {
   return;
 };
 
+const shutdownMsg = (signal: string) =>
+  `[SHUTDOWN] Bridge Watcher is shutting down (Received: ${signal})`;
+
+process.on("SIGINT", () => {
+  logger.info(shutdownMsg("SIGINT"));
+  process.exit(0);
+});
+
+process.on("SIGTERM", () => {
+  logger.info(shutdownMsg("SIGTERM"));
+  process.exit(0);
+});
+
+process.on("exit", (code: number) => {
+  logger.info(shutdownMsg(`Exit code: ${code.toString()}`));
+});
+
 main().catch((err) => {
-  logger.error(`encountered error: ${err}`);
+  logger.error(shutdownMsg(err));
   process.exit(1);
 });

@@ -5,7 +5,7 @@ import { IMeshScanner } from "./MeshScanner";
 import { MeshTx } from "./models/MeshTx";
 import { Validator } from "./Validator";
 import BN from "bn.js";
-import fetch from 'node-fetch';
+import fetch from "node-fetch";
 
 // subscribes to Polymesh events.
 export class Subscriber {
@@ -39,12 +39,23 @@ export class Subscriber {
     return async (header: any) => {
       this.logger.debug(`received ${header.number} block`);
       // If metrics are enabled, send heartbeat to metrics
-      if (this.telemetry != undefined && this.username != undefined && this.password != undefined) {
+      if (
+        this.telemetry != undefined &&
+        this.username != undefined &&
+        this.password != undefined
+      ) {
         return fetch(this.telemetry, {
-          method:'GET',
+          method: "GET",
           headers: {
-            'Authorization': 'Basic ' + Buffer.from(`${this.username}:${this.password}`, 'binary').toString('base64')
-          }
+            Authorization:
+              "Basic " +
+              Buffer.from(
+                `${this.username}:${this.password}`,
+                "binary"
+              ).toString("base64"),
+          },
+        }).catch((err) => {
+          this.logger.error(`Could not post telemetry results: ${err}`);
         });
       }
     };
@@ -94,7 +105,7 @@ export class Subscriber {
     );
     if (!proposal) {
       this.logger.error(
-        `proposal at ${contractAddr} ID: ${proposalId} was not found `
+        `proposal at ${contractAddr} ID: ${proposalId} was not found`
       );
       return;
     }
