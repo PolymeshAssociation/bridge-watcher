@@ -21,7 +21,12 @@ export class EthScanner implements IEthScanner {
   private web3: Web3;
   private startBlock: number;
   private latestBlock: number;
-  constructor(web3URL: string, contractAddr: string, private logger: Logger, private slack: ISlack) {
+  constructor(
+    web3URL: string,
+    contractAddr: string,
+    private logger: Logger,
+    private slack: ISlack
+  ) {
     this.db = new DB(contractAddr, logger);
     this.web3 = new Web3(web3URL);
     this.polyLocker = new this.web3.eth.Contract(PolyLocker.abi, contractAddr);
@@ -35,9 +40,11 @@ export class EthScanner implements IEthScanner {
     if (tx) {
       return tx;
     }
-    const result = await this.web3.eth.getTransaction(txHash).catch(async (err) => {
-      var msg = `Could not connect to web3 provider - exiting process (${err})`;
-      this.logger.error(msg);
+    const result = await this.web3.eth
+      .getTransaction(txHash)
+      .catch(async (err) => {
+        var msg = `Could not connect to web3 provider - exiting process (${err})`;
+        this.logger.error(msg);
         await this.slack.post(msg);
         process.exit(1);
       });
