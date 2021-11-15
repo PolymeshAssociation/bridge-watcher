@@ -34,9 +34,14 @@ export class EthScanner implements IEthScanner {
     if (tx) {
       return tx;
     }
-    const result = await this.web3.eth.getTransaction(txHash);
+    const result = await this.web3.eth.getTransaction(txHash).catch((err) => {
+      this.logger.error(
+        `Could not connect to web3 provider - exiting process (${err})`
+      );
+      process.exit(1);
+    });
     if (!result) {
-      this.logger.error("result was not found by txHash: ", txHash);
+      this.logger.error(`result was not found by txHash: ${txHash}`);
       return null;
     }
     const ethEvents = await this.polyLocker.getPastEvents("PolyLocked", {
@@ -49,7 +54,7 @@ export class EthScanner implements IEthScanner {
       if (ethTx) {
         this.db.insertEthTx(ethTx);
       }
-      ethTxs.add(ethTx);    
+      ethTxs.add(ethTx);
     });
     return ethTxs;
   }
