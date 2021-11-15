@@ -51,7 +51,7 @@ export class EthScanner implements IEthScanner {
     if (!result) {
       var msg = `result was not found by txHash: ${txHash}`;
       this.logger.error(msg);
-      this.slack.post(msg);
+      await this.slack.post(msg);
       return null;
     }
     const ethEvents = await this.polyLocker.getPastEvents("PolyLocked", {
