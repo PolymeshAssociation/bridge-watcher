@@ -22,16 +22,17 @@ export class EthScanner implements IEthScanner {
   private startBlock: number;
   private latestBlock: number;
   constructor(
-    web3URL: string,
+    private web3URL: string,
     contractAddr: string,
     private logger: Logger,
-    private slack: ISlack
+    private slack: ISlack,
+    startBlock: number
   ) {
     this.db = new DB(contractAddr, logger);
     this.web3 = new Web3(web3URL);
     this.polyLocker = new this.web3.eth.Contract(PolyLocker.abi, contractAddr);
     this.windowSize = 5000; // make env? larger window means faster scan, but risks to big response
-    this.startBlock = this.db.startBlock || parseInt(process.env.START_BLOCK);
+    this.startBlock = this.db.startBlock || startBlock;
   }
 
   // get single PolyLocker event by transaction hash. Checks if the tx is cached otherwise attempts to fetch it
@@ -40,14 +41,14 @@ export class EthScanner implements IEthScanner {
     if (tx) {
       return tx;
     }
-    const result = await this.web3.eth
-      .getTransaction(txHash)
-      .catch(async (err) => {
-        var msg = `Could not connect to web3 provider - exiting process (${err})`;
-        this.logger.error(msg);
-        await this.slack.post(msg);
-        process.exit(1);
-      });
+    // make a Web3 connection on every request to ensure its alive
+    const web3 = new Web3(this.web3URL);
+    const result = await web3.eth.getTransaction(txHash).catch(async (err) => {
+      var msg = `Could not connect to web3 provider - exiting process (${err})`;
+      this.logger.error(msg);
+      await this.slack.post(msg);
+      process.exit(1);
+    });
     if (!result) {
       var msg = `result was not found by txHash: ${txHash}`;
       this.logger.error(msg);
