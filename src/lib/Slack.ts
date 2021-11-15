@@ -8,7 +8,7 @@ export class Slack {
   constructor(private hookURL: string, private username: string, private logger: Logger) {}
 
   public post(text: string): void {
-    let message: string = this.username + " : " + text;
+    let message: string = this.username ? `${this.username}: ${text}` : text;
     this.logger.info(`Posting to slack ${message}`);
     axios.post(this.hookURL, { text: message }).catch((err) => {
       this.logger.error(
