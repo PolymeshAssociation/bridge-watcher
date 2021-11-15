@@ -49,7 +49,7 @@ const main = async () => {
   let setup = async () => {
     const opts = program.opts();
     ethScanner = new EthScanner(opts.ethURL, opts.contract, logger);
-    const slack = new Slack(opts.slackHook, logger);
+    const slack = new Slack(opts.slackHook, opts.username, logger);
     const watcherMode = !!(program.args[0] === "watch" && opts.slackHook);
     const { types, rpc } = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
     const provider = new WsProvider(opts.polymeshURL);
