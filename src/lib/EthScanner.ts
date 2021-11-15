@@ -35,12 +35,12 @@ export class EthScanner implements IEthScanner {
     if (tx) {
       return tx;
     }
-    const result = await this.web3.eth.getTransaction(txHash).catch((err) => {
+    const result = await this.web3.eth.getTransaction(txHash).catch(async (err) => {
       var msg = `Could not connect to web3 provider - exiting process (${err})`;
       this.logger.error(msg);
-      this.slack.post(msg);
-      process.exit(1);
-    });
+        await this.slack.post(msg);
+        process.exit(1);
+      });
     if (!result) {
       var msg = `result was not found by txHash: ${txHash}`;
       this.logger.error(msg);
