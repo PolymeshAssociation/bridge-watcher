@@ -56,6 +56,7 @@ export class MeshScanner implements IMeshScanner {
   async freeze() {
     const keyring = new Keyring({ type: "sr25519" });
     const bob = keyring.addFromMnemonic(this.mnemonic);
+    this.logger.info("Freezing bridge due to error");
     try {
       const freezeUnsub = await this.api.tx.bridge
         .freeze()
@@ -85,6 +86,7 @@ export class MeshScanner implements IMeshScanner {
                     errorMsg = error.toString();
                   }
                   this.logger.error(`could not freeze the bridge: ${errorMsg}`);
+                  process.exit(1);
                 }
               );
           }
@@ -95,6 +97,7 @@ export class MeshScanner implements IMeshScanner {
         });
     } catch (err) {
       this.logger.error(`error freezing the bridge: ${err}`);
+      process.exit(1);
     }
   }
 }

@@ -23,7 +23,7 @@ export class EthScanner implements IEthScanner {
   private latestBlock: number;
   constructor(
     private web3URL: string,
-    contractAddr: string,
+    private contractAddr: string,
     private logger: Logger,
     private slack: ISlack,
     startBlock: number
@@ -55,7 +55,9 @@ export class EthScanner implements IEthScanner {
       await this.slack.post(msg);
       return null;
     }
-    const ethEvents = await this.polyLocker.getPastEvents("PolyLocked", {
+    // recreate polyLocker object to ensure its alive
+    const polyLocker = new web3.eth.Contract(PolyLocker.abi, this.contractAddr);
+    const ethEvents = await polyLocker.getPastEvents("PolyLocked", {
       fromBlock: result.blockNumber,
       toBlock: result.blockNumber,
     });
