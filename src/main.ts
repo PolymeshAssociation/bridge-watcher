@@ -49,7 +49,13 @@ const main = async () => {
   let setup = async () => {
     const opts = program.opts();
     const slack = new Slack(opts.slackHook, opts.username, logger);
-    ethScanner = new EthScanner(opts.ethURL, opts.contract, logger, slack);
+    ethScanner = new EthScanner(
+      opts.ethURL,
+      opts.contract,
+      logger,
+      slack,
+      opts.startBlock || 1
+    );
     const watcherMode = !!(program.args[0] === "watch" && opts.slackHook);
     const { types, rpc } = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
     const provider = new WsProvider(opts.polymeshURL);
@@ -86,11 +92,6 @@ const main = async () => {
     process.env.POLYMESH_URL
   );
   program.requiredOption(
-    "-s, --startBlock <number>",
-    "Specifies ethereum block to start scanning from the PolyLocker contract. Overrides env variable $START_BLOCK",
-    process.env.START_BLOCK
-  );
-  program.requiredOption(
     "-w, --ethURL <URL>",
     "Specifies url for an Ethereum node. Overrides env var $ETH_URL",
     process.env.ETH_URL
@@ -99,6 +100,11 @@ const main = async () => {
     "-m --mnemonic <string>",
     "Mnemonic for the bridge freezer admin account. Overrides env variable $MNEMONIC",
     process.env.MNEMONIC
+  );
+  program.option(
+    "-s, --startBlock <number>",
+    "Specifies ethereum block to start scanning from the PolyLocker contract. Overrides env variable $START_BLOCK",
+    process.env.START_BLOCK
   );
   program.option(
     "-h --slackHook <URL>",
