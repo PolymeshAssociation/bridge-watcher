@@ -56,7 +56,7 @@ const main = async () => {
       slack,
       opts.startBlock || 1
     );
-    const watcherMode = !!(program.args[0] === "watch" && opts.slackHook);
+    const watcherMode = !!(program.args[0] === "watch");
     const { types, rpc } = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
     const provider = new WsProvider(opts.polymeshURL);
     const api = await ApiPromise.create({

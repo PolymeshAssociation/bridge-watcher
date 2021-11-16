@@ -57,7 +57,9 @@ export class Validator {
         ethTx
       )} \n*Problems*: ${errors}`;
       if (this.watcherMode) {
+        this.logger.info("Error found in watch mode - posting to slack");
         this.postToSlack("*Invalid bridgeTx detected!* \n\n" + message);
+        this.logger.info("Error found in watch mode - freezing");
         this.meshScanner.freeze();
       }
       // strip out slack formatting characters for the log line
