@@ -32,7 +32,7 @@ export class EthScanner implements IEthScanner {
     this.web3 = new Web3(web3URL);
     this.polyLocker = new this.web3.eth.Contract(PolyLocker.abi, contractAddr);
     this.windowSize = 5000; // make env? larger window means faster scan, but risks to big response
-    this.startBlock = this.db.startBlock || startBlock;
+    this.startBlock = this.db.startBlock || +startBlock;
   }
 
   // get single PolyLocker event by transaction hash. Checks if the tx is cached otherwise attempts to fetch it
