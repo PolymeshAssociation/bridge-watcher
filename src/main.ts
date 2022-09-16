@@ -11,6 +11,8 @@ import {
   validateEthTx,
 } from "./lib/commands";
 import { ApiPromise, WsProvider } from "@polkadot/api";
+import '@polkadot/api-augment';
+
 import { EthScanner } from "./lib/EthScanner";
 import { MeshScanner } from "./lib/MeshScanner";
 import { Slack } from "./lib/Slack";
@@ -19,7 +21,7 @@ import { Subscriber } from "./lib/Subscriber";
 const schemaPath = path.join(__dirname, "data", "polymesh_schema.json");
 require("dotenv").config(); // Load .env file
 const schemaUrl =
-  "https://raw.githubusercontent.com/PolymathNetwork/Polymesh/v4.0.0/polymesh_schema.json";
+  "https://schema.polymesh.live/testnet/";
 
 const logger = winston.createLogger({
   level: "debug",

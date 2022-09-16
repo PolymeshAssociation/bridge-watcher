@@ -29,14 +29,15 @@ export class MeshScanner implements IMeshScanner {
       const meshTx = new MeshTx(
         meshAddress,
         tx.amount,
-        hexEncode(tx.tx_hash),
+        hexEncode(tx.txHash),
         nonce,
         "fetchAllTxs"
       );
-      if (!meshTxs[hexEncode(tx.tx_hash)]) {
-        meshTxs[hexEncode(tx.tx_hash)] = new Set<MeshTx>();
+      if (!meshTxs[hexEncode(tx.txHash)]) {
+        meshTxs[hexEncode(tx.txHash)] = new Set<MeshTx>();
       }
-      meshTxs[hexEncode(tx.tx_hash)].add(meshTx);
+
+      meshTxs[hexEncode(tx.txHash)].add(meshTx);
     }
     return meshTxs;
   }

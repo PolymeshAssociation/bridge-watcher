@@ -29,12 +29,12 @@ These can be set in the `.env` file or as normal ENV variables.
 If using the docker image, you can use an env file to pass these variable in
 
 ```sh
-  docker run -d --env-file .env --restart unless-stopped polymathnet/bridge-watcher
+  docker run -d --env-file .env --restart unless-stopped polymeshassociation/bridge-watcher
 ```
 
 `main()` in `index.js` will subscribe to all Polymesh events and will validate the incoming `BridgeTx`. It will use the `tx_hash` to lookup the PolyLocker transaction, and compare the fields. If they differ it will log the discrepancy.
 
-We may want to change this pattern and use the `tx_hash` to lookup the PolyLocker from the ETH_URL instead of creating a potentially large in memory data structure.
+We may want to change this pattern and use the `txHash` to lookup the PolyLocker from the ETH_URL instead of creating a potentially large in memory data structure.
 
 You can get the ETH_URL by creating an account at [Infura](https://infura.io/) and creating a ETH project.
 

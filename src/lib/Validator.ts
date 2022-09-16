@@ -83,7 +83,7 @@ export class Validator {
     }
     if (!ethTx) {
       errors.push(
-        `\nPolyLocker transaction was not found by tx_hash: ${meshTx.txHash}`
+        `\nPolyLocker transaction was not found by txHash: ${meshTx.txHash}`
       );
       return errors;
     }
