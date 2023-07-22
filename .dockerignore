@@ -1,5 +1,12 @@
-node_modules
-data
-dist
-.git
-*.env
+Dockerfile
+.dockerignore
+.env*
+.git/
+.github/
+.gitignore
+jest.config.js
+README.md
+tests/
+yarn.lock
+node_modules/
+dist/
