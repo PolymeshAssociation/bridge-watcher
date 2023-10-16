@@ -43,7 +43,7 @@ export class MeshScanner implements IMeshScanner {
   }
 
   async getProposal(multiSigAddr: string, proposalId: string): Promise<any> {
-    return await this.api.query.multiSig.proposals([multiSigAddr, proposalId]);
+    return await this.api.query.multiSig.proposals(multiSigAddr, proposalId);
   }
 
   subscribe(eventHandler: MeshEventHandler) {
