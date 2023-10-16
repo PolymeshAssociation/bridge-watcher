@@ -27,6 +27,11 @@ RUN apk add --no-cache curl
 
 ################################################################
 
+RUN mkdir -p /data && \
+    chown -R node: /data
+
+################################################################
+
 WORKDIR /home/node
 USER node
 
